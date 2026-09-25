@@ -1,6 +1,6 @@
-import { Button } from '../components/Button';
-import { TextField } from '../components/TextField';
-import type { AuthenticationMode } from './useAuthenticationForm';
+import { Button } from '@/ui/components/Button';
+import { TextField } from '@/ui/components/TextField';
+import type { AuthenticationMode } from '@/ui/authentication/useAuthenticationForm';
 
 interface AuthenticationFormProps {
   errorMessage: string | null;

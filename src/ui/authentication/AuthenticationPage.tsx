@@ -1,10 +1,10 @@
 import type {
   SignInCredentials,
   SignUpCredentials,
-} from '../../application/identity/identity-provider';
-import { PageCard } from '../components/PageCard';
-import { AuthenticationForm } from './AuthenticationForm';
-import { useAuthenticationForm } from './useAuthenticationForm';
+} from '@/application/identity/identity-provider';
+import { PageCard } from '@/ui/components/PageCard';
+import { AuthenticationForm } from '@/ui/authentication/AuthenticationForm';
+import { useAuthenticationForm } from '@/ui/authentication/useAuthenticationForm';
 
 interface AuthenticationPageProps {
   onSignIn: (credentials: SignInCredentials) => Promise<void>;

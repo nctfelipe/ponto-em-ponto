@@ -1,4 +1,4 @@
-import { Button } from '../components/Button';
+import { Button } from '@/ui/components/Button';
 
 interface DashboardProps {
   onSignOut: () => Promise<void>;

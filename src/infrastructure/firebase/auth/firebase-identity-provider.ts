@@ -15,8 +15,8 @@ import {
   type IdentityProvider,
   type SignInCredentials,
   type SignUpCredentials,
-} from '../../../application/identity/identity-provider';
-import { getFirebaseApp } from '../app';
+} from '@/application/identity/identity-provider';
+import { getFirebaseApp } from '@/infrastructure/firebase/app';
 
 function toIdentity(user: User): Identity {
   return {

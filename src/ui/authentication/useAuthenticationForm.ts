@@ -2,7 +2,7 @@ import { useState, type SyntheticEvent } from 'react';
 import type {
   SignInCredentials,
   SignUpCredentials,
-} from '../../application/identity/identity-provider';
+} from '@/application/identity/identity-provider';
 
 export type AuthenticationMode = 'sign-in' | 'sign-up';
 

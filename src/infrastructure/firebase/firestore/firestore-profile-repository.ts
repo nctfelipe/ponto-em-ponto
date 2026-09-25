@@ -3,9 +3,9 @@ import {
   ProfileRepositoryError,
   type NewPendingProfile,
   type ProfileRepository,
-} from '../../../application/profiles/profile-repository';
-import type { Profile, ProfileStatus } from '../../../domain/profile';
-import { getFirebaseApp } from '../app';
+} from '@/application/profiles/profile-repository';
+import type { Profile, ProfileStatus } from '@/domain/profile';
+import { getFirebaseApp } from '@/infrastructure/firebase/app';
 
 interface ProfileDocument {
   displayName: string;

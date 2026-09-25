@@ -1,10 +1,10 @@
-import { FirebaseIdentityProvider } from './infrastructure/firebase/auth/firebase-identity-provider';
-import { FirestoreProfileRepository } from './infrastructure/firebase/firestore/firestore-profile-repository';
-import { AuthenticationPage } from './ui/authentication/AuthenticationPage';
-import { Dashboard } from './ui/dashboard/Dashboard';
-import { AccessErrorPage } from './ui/feedback/AccessErrorPage';
-import { LoadingPage } from './ui/feedback/LoadingPage';
-import { useSession } from './ui/session/useSession';
+import { FirebaseIdentityProvider } from '@/infrastructure/firebase/auth/firebase-identity-provider';
+import { FirestoreProfileRepository } from '@/infrastructure/firebase/firestore/firestore-profile-repository';
+import { AuthenticationPage } from '@/ui/authentication/AuthenticationPage';
+import { Dashboard } from '@/ui/dashboard/Dashboard';
+import { AccessErrorPage } from '@/ui/feedback/AccessErrorPage';
+import { LoadingPage } from '@/ui/feedback/LoadingPage';
+import { useSession } from '@/ui/session/useSession';
 
 const identityProvider = new FirebaseIdentityProvider();
 const profileRepository = new FirestoreProfileRepository();

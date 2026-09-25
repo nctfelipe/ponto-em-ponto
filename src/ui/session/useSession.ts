@@ -4,10 +4,10 @@ import type {
   IdentityProvider,
   SignInCredentials,
   SignUpCredentials,
-} from '../../application/identity/identity-provider';
-import { ensureProfile } from '../../application/profiles/ensure-profile';
-import type { ProfileRepository } from '../../application/profiles/profile-repository';
-import type { Profile } from '../../domain/profile';
+} from '@/application/identity/identity-provider';
+import { ensureProfile } from '@/application/profiles/ensure-profile';
+import type { ProfileRepository } from '@/application/profiles/profile-repository';
+import type { Profile } from '@/domain/profile';
 
 export type SessionState =
   | { status: 'loading' }

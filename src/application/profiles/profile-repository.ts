@@ -1,4 +1,4 @@
-import type { Profile } from '../../domain/profile';
+import type { Profile } from '@/domain/profile';
 
 export interface NewPendingProfile {
   id: string;

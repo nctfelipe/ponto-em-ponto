@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Button } from '../components/Button';
-import { PageCard } from '../components/PageCard';
+import { Button } from '@/ui/components/Button';
+import { PageCard } from '@/ui/components/PageCard';
 
 interface AccessErrorPageProps {
   onRetry: () => Promise<void> | void;
