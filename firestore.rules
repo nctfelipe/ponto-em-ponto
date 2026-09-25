@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    function isCurrentUser(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /profiles/{userId} {
+      allow create: if isCurrentUser(userId)
+        && request.resource.data.keys().hasOnly([
+          'displayName',
+          'email',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.displayName is string
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow get: if isCurrentUser(userId) || isAdmin();
+      allow list: if isAdmin();
+
+      allow update: if isAdmin()
+        && resource.data.status == 'PENDING'
+        && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+  }
+}
