@@ -2,6 +2,7 @@ export interface Identity {
   id: string;
   displayName: string;
   email: string;
+  isAdmin: boolean;
 }
 
 export interface SignUpCredentials {
@@ -20,7 +21,7 @@ export interface IdentityProvider {
   signIn(credentials: SignInCredentials): Promise<Identity>;
   signInWithGoogle(): Promise<Identity>;
   signOut(): Promise<void>;
-  onIdentityChanged(callback: (identity: Identity | null) => void): () => void;
+  onIdentityChanged(callback: (identity: Identity | null) => void, onError: () => void): () => void;
 }
 
 export class IdentityProviderError extends Error {

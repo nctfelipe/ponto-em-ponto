@@ -4,6 +4,7 @@ import { AuthenticationPage } from '@/ui/authentication/AuthenticationPage';
 import { Dashboard } from '@/ui/dashboard/Dashboard';
 import { AccessErrorPage } from '@/ui/feedback/AccessErrorPage';
 import { LoadingPage } from '@/ui/feedback/LoadingPage';
+import { PendingApprovalPage } from '@/ui/profile/PendingApprovalPage';
 import { useSession } from '@/ui/session/useSession';
 
 const identityProvider = new FirebaseIdentityProvider();
@@ -39,7 +40,21 @@ function App() {
     );
   }
 
-  return <Dashboard onSignOut={session.signOut} />;
+  const { identity, profile } = session.state;
+
+  if (profile.status === 'PENDING' && !identity.isAdmin) {
+    return <PendingApprovalPage onSignOut={session.signOut} />;
+  }
+
+  return (
+    <Dashboard
+      identity={identity}
+      onProfileApproved={session.refreshProfile}
+      onSignOut={session.signOut}
+      profile={profile}
+      profileRepository={profileRepository}
+    />
+  );
 }
 
 export default App;

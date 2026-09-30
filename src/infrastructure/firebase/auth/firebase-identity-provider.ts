@@ -2,7 +2,7 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   getAuth,
-  onAuthStateChanged,
+  onIdTokenChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -18,11 +18,14 @@ import {
 } from '@/application/identity/identity-provider';
 import { getFirebaseApp } from '@/infrastructure/firebase/app';
 
-function toIdentity(user: User): Identity {
+async function toIdentity(user: User): Promise<Identity> {
+  const token = await user.getIdTokenResult();
+
   return {
     id: user.uid,
     displayName: user.displayName?.trim() ?? '',
     email: user.email?.trim() ?? '',
+    isAdmin: token.claims.admin === true,
   };
 }
 
@@ -40,7 +43,7 @@ export class FirebaseIdentityProvider implements IdentityProvider {
 
       await updateProfile(result.user, { displayName: credentials.displayName });
 
-      return toIdentity(result.user);
+      return await toIdentity(result.user);
     } catch (error: unknown) {
       throw new IdentityProviderError('Unable to create identity.', { cause: error });
     }
@@ -54,7 +57,7 @@ export class FirebaseIdentityProvider implements IdentityProvider {
         credentials.password,
       );
 
-      return toIdentity(result.user);
+      return await toIdentity(result.user);
     } catch (error: unknown) {
       throw new IdentityProviderError('Unable to authenticate identity.', { cause: error });
     }
@@ -63,7 +66,7 @@ export class FirebaseIdentityProvider implements IdentityProvider {
   async signInWithGoogle() {
     try {
       const result = await signInWithPopup(this.auth, this.googleProvider);
-      return toIdentity(result.user);
+      return await toIdentity(result.user);
     } catch (error: unknown) {
       throw new IdentityProviderError('Unable to authenticate with Google.', { cause: error });
     }
@@ -77,9 +80,18 @@ export class FirebaseIdentityProvider implements IdentityProvider {
     }
   }
 
-  onIdentityChanged(callback: (identity: Identity | null) => void) {
-    return onAuthStateChanged(this.auth, (user) => {
-      callback(user ? toIdentity(user) : null);
-    });
+  onIdentityChanged(callback: (identity: Identity | null) => void, onError: () => void) {
+    return onIdTokenChanged(
+      this.auth,
+      (user) => {
+        if (!user) {
+          callback(null);
+          return;
+        }
+
+        void toIdentity(user).then(callback).catch(onError);
+      },
+      onError,
+    );
   }
 }

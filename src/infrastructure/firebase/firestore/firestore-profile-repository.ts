@@ -1,4 +1,15 @@
-import { doc, getDoc, getFirestore, serverTimestamp, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  getFirestore,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 import {
   ProfileRepositoryError,
   type NewPendingProfile,
@@ -56,6 +67,41 @@ export class FirestoreProfileRepository implements ProfileRepository {
       });
     } catch (error: unknown) {
       throw new ProfileRepositoryError('Unable to create profile.', { cause: error });
+    }
+  }
+
+  async findPending() {
+    try {
+      const snapshot = await getDocs(
+        query(collection(this.firestore, 'profiles'), where('status', '==', 'PENDING')),
+      );
+
+      return snapshot.docs.map((profile) =>
+        toProfile(profile.id, profile.data() as ProfileDocument),
+      );
+    } catch (error: unknown) {
+      throw new ProfileRepositoryError('Unable to list pending profiles.', { cause: error });
+    }
+  }
+
+  async activate(id: string) {
+    try {
+      const reference = doc(this.firestore, 'profiles', id);
+
+      await updateDoc(reference, {
+        status: 'ACTIVE',
+        updatedAt: serverTimestamp(),
+      });
+
+      const snapshot = await getDoc(reference);
+
+      if (!snapshot.exists()) {
+        throw new Error('Activated profile was not found.');
+      }
+
+      return toProfile(snapshot.id, snapshot.data() as ProfileDocument);
+    } catch (error: unknown) {
+      throw new ProfileRepositoryError('Unable to activate profile.', { cause: error });
     }
   }
 }
