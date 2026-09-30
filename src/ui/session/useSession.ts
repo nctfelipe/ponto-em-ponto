@@ -16,109 +16,114 @@ export type SessionState =
   | { status: 'profile-missing'; identity: Identity }
   | { status: 'error' };
 
-interface UseSessionDependencies {
+interface CreateUseSessionDependencies {
   identityProvider: IdentityProvider;
   profileRepository: ProfileRepository;
 }
 
-export function useSession({ identityProvider, profileRepository }: UseSessionDependencies) {
-  const [state, setState] = useState<SessionState>({ status: 'loading' });
-  const authenticationInProgress = useRef(false);
+export function createUseSession({
+  identityProvider,
+  profileRepository,
+}: CreateUseSessionDependencies) {
+  return function useSession() {
+    const [state, setState] = useState<SessionState>({ status: 'loading' });
+    const authenticationInProgress = useRef(false);
 
-  useEffect(() => {
-    let isActive = true;
+    useEffect(() => {
+      let isActive = true;
 
-    const unsubscribe = identityProvider.onIdentityChanged(
-      (identity) => {
-        if (authenticationInProgress.current) return;
+      const unsubscribe = identityProvider.onIdentityChanged(
+        (identity) => {
+          if (authenticationInProgress.current) return;
 
-        if (!identity) {
-          setState({ status: 'anonymous' });
-          return;
-        }
+          if (!identity) {
+            setState({ status: 'anonymous' });
+            return;
+          }
 
-        void profileRepository
-          .findById(identity.id)
-          .then((profile) => {
-            if (!isActive) return;
+          void profileRepository
+            .findById(identity.id)
+            .then((profile) => {
+              if (!isActive) return;
 
-            setState(
-              profile
-                ? { status: 'authenticated', identity, profile }
-                : { status: 'profile-missing', identity },
-            );
-          })
-          .catch(() => {
-            if (isActive) setState({ status: 'error' });
-          });
-      },
-      () => {
-        if (isActive) setState({ status: 'error' });
-      },
-    );
+              setState(
+                profile
+                  ? { status: 'authenticated', identity, profile }
+                  : { status: 'profile-missing', identity },
+              );
+            })
+            .catch(() => {
+              if (isActive) setState({ status: 'error' });
+            });
+        },
+        () => {
+          if (isActive) setState({ status: 'error' });
+        },
+      );
 
-    return () => {
-      isActive = false;
-      unsubscribe();
-    };
-  }, [identityProvider, profileRepository]);
+      return () => {
+        isActive = false;
+        unsubscribe();
+      };
+    }, []);
 
-  async function completeAuthentication(identity: Identity) {
-    const profile = await ensureProfile(identity, profileRepository);
-    setState({ status: 'authenticated', identity, profile });
-  }
-
-  async function runAuthentication(action: () => Promise<Identity>) {
-    authenticationInProgress.current = true;
-
-    try {
-      await completeAuthentication(await action());
-    } finally {
-      authenticationInProgress.current = false;
+    async function completeAuthentication(identity: Identity) {
+      const profile = await ensureProfile(identity, profileRepository);
+      setState({ status: 'authenticated', identity, profile });
     }
-  }
 
-  function signUp(credentials: SignUpCredentials) {
-    return runAuthentication(() => identityProvider.signUp(credentials));
-  }
+    async function runAuthentication(action: () => Promise<Identity>) {
+      authenticationInProgress.current = true;
 
-  function signIn(credentials: SignInCredentials) {
-    return runAuthentication(() => identityProvider.signIn(credentials));
-  }
+      try {
+        await completeAuthentication(await action());
+      } finally {
+        authenticationInProgress.current = false;
+      }
+    }
 
-  function signInWithGoogle() {
-    return runAuthentication(() => identityProvider.signInWithGoogle());
-  }
+    function signUp(credentials: SignUpCredentials) {
+      return runAuthentication(() => identityProvider.signUp(credentials));
+    }
 
-  async function signOut() {
-    await identityProvider.signOut();
-    setState({ status: 'anonymous' });
-  }
+    function signIn(credentials: SignInCredentials) {
+      return runAuthentication(() => identityProvider.signIn(credentials));
+    }
 
-  function retryProfile() {
-    if (state.status !== 'profile-missing') return Promise.resolve();
-    return completeAuthentication(state.identity);
-  }
+    function signInWithGoogle() {
+      return runAuthentication(() => identityProvider.signInWithGoogle());
+    }
 
-  async function refreshProfile() {
-    if (state.status !== 'authenticated') return;
+    async function signOut() {
+      await identityProvider.signOut();
+      setState({ status: 'anonymous' });
+    }
 
-    const profile = await profileRepository.findById(state.identity.id);
+    function retryProfile() {
+      if (state.status !== 'profile-missing') return Promise.resolve();
+      return completeAuthentication(state.identity);
+    }
 
-    setState(
-      profile
-        ? { status: 'authenticated', identity: state.identity, profile }
-        : { status: 'profile-missing', identity: state.identity },
-    );
-  }
+    async function refreshProfile() {
+      if (state.status !== 'authenticated') return;
 
-  return {
-    state,
-    refreshProfile,
-    retryProfile,
-    signIn,
-    signInWithGoogle,
-    signOut,
-    signUp,
+      const profile = await profileRepository.findById(state.identity.id);
+
+      setState(
+        profile
+          ? { status: 'authenticated', identity: state.identity, profile }
+          : { status: 'profile-missing', identity: state.identity },
+      );
+    }
+
+    return {
+      state,
+      refreshProfile,
+      retryProfile,
+      signIn,
+      signInWithGoogle,
+      signOut,
+      signUp,
+    };
   };
 }

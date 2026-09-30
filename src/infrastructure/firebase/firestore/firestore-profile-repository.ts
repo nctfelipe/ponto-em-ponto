@@ -4,11 +4,9 @@ import {
   getDoc,
   getDocs,
   getFirestore,
-  query,
   serverTimestamp,
   setDoc,
   updateDoc,
-  where,
 } from 'firebase/firestore';
 import {
   ProfileRepositoryError,
@@ -70,17 +68,15 @@ export class FirestoreProfileRepository implements ProfileRepository {
     }
   }
 
-  async findPending() {
+  async findAll() {
     try {
-      const snapshot = await getDocs(
-        query(collection(this.firestore, 'profiles'), where('status', '==', 'PENDING')),
-      );
+      const snapshot = await getDocs(collection(this.firestore, 'profiles'));
 
       return snapshot.docs.map((profile) =>
         toProfile(profile.id, profile.data() as ProfileDocument),
       );
     } catch (error: unknown) {
-      throw new ProfileRepositoryError('Unable to list pending profiles.', { cause: error });
+      throw new ProfileRepositoryError('Unable to list profiles.', { cause: error });
     }
   }
 

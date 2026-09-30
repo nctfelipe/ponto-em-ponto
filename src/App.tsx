@@ -1,17 +1,12 @@
-import { FirebaseIdentityProvider } from '@/infrastructure/firebase/auth/firebase-identity-provider';
-import { FirestoreProfileRepository } from '@/infrastructure/firebase/firestore/firestore-profile-repository';
 import { AuthenticationPage } from '@/ui/authentication/AuthenticationPage';
+import { useSession } from '@/ui/composition';
 import { Dashboard } from '@/ui/dashboard/Dashboard';
 import { AccessErrorPage } from '@/ui/feedback/AccessErrorPage';
 import { LoadingPage } from '@/ui/feedback/LoadingPage';
 import { PendingApprovalPage } from '@/ui/profile/PendingApprovalPage';
-import { useSession } from '@/ui/session/useSession';
-
-const identityProvider = new FirebaseIdentityProvider();
-const profileRepository = new FirestoreProfileRepository();
 
 function App() {
-  const session = useSession({ identityProvider, profileRepository });
+  const session = useSession();
 
   if (session.state.status === 'loading') return <LoadingPage />;
 
@@ -52,7 +47,6 @@ function App() {
       onProfileApproved={session.refreshProfile}
       onSignOut={session.signOut}
       profile={profile}
-      profileRepository={profileRepository}
     />
   );
 }
