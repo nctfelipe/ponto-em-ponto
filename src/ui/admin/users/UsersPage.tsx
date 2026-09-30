@@ -2,16 +2,8 @@ import { useUsers } from '@/ui/composition';
 import { Button } from '@/ui/components/Button';
 import { UsersTable } from '@/ui/admin/users/UsersTable';
 
-interface UsersPageProps {
-  currentUserId: string;
-  onCurrentUserActivated: () => Promise<void>;
-}
-
-export function UsersPage({ currentUserId, onCurrentUserActivated }: UsersPageProps) {
-  const { activate, activatingId, hasError, isLoading, load, users } = useUsers({
-    currentUserId,
-    onCurrentUserActivated,
-  });
+export function UsersPage() {
+  const { activate, activatingId, hasError, isLoading, load, users } = useUsers();
 
   if (isLoading) return <p role="status">Carregando usuários...</p>;
 

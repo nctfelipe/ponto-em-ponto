@@ -1,8 +1,11 @@
+import { Navigate, Route, Routes } from 'react-router';
+import { UsersPage } from '@/ui/admin/users/UsersPage';
 import { AuthenticationPage } from '@/ui/authentication/AuthenticationPage';
 import { useSession } from '@/ui/composition';
-import { Dashboard } from '@/ui/dashboard/Dashboard';
 import { AccessErrorPage } from '@/ui/feedback/AccessErrorPage';
 import { LoadingPage } from '@/ui/feedback/LoadingPage';
+import { HomePage } from '@/ui/home/HomePage';
+import { AuthenticatedLayout } from '@/ui/layout/AuthenticatedLayout';
 import { PendingApprovalPage } from '@/ui/profile/PendingApprovalPage';
 
 function App() {
@@ -12,11 +15,19 @@ function App() {
 
   if (session.state.status === 'anonymous') {
     return (
-      <AuthenticationPage
-        onSignIn={session.signIn}
-        onSignInWithGoogle={session.signInWithGoogle}
-        onSignUp={session.signUp}
-      />
+      <Routes>
+        <Route
+          element={
+            <AuthenticationPage
+              onSignIn={session.signIn}
+              onSignInWithGoogle={session.signInWithGoogle}
+              onSignUp={session.signUp}
+            />
+          }
+          path="/login"
+        />
+        <Route element={<Navigate replace to="/login" />} path="*" />
+      </Routes>
     );
   }
 
@@ -37,17 +48,23 @@ function App() {
 
   const { identity, profile } = session.state;
 
-  if (profile.status === 'PENDING' && !identity.isAdmin) {
-    return <PendingApprovalPage onSignOut={session.signOut} />;
+  if (profile.status === 'PENDING') {
+    return (
+      <Routes>
+        <Route element={<PendingApprovalPage onSignOut={session.signOut} />} path="/pending" />
+        <Route element={<Navigate replace to="/pending" />} path="*" />
+      </Routes>
+    );
   }
 
   return (
-    <Dashboard
-      identity={identity}
-      onProfileApproved={session.refreshProfile}
-      onSignOut={session.signOut}
-      profile={profile}
-    />
+    <Routes>
+      <Route element={<AuthenticatedLayout identity={identity} onSignOut={session.signOut} />}>
+        <Route element={<HomePage />} index />
+        {identity.isAdmin && <Route element={<UsersPage />} path="users" />}
+      </Route>
+      <Route element={<Navigate replace to="/" />} path="*" />
+    </Routes>
   );
 }
 

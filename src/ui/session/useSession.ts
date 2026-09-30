@@ -104,21 +104,8 @@ export function createUseSession({
       return completeAuthentication(state.identity);
     }
 
-    async function refreshProfile() {
-      if (state.status !== 'authenticated') return;
-
-      const profile = await profileRepository.findById(state.identity.id);
-
-      setState(
-        profile
-          ? { status: 'authenticated', identity: state.identity, profile }
-          : { status: 'profile-missing', identity: state.identity },
-      );
-    }
-
     return {
       state,
-      refreshProfile,
       retryProfile,
       signIn,
       signInWithGoogle,

@@ -7,13 +7,8 @@ interface CreateUseUsersDependencies {
   profileRepository: ProfileRepository;
 }
 
-interface UseUsersOptions {
-  currentUserId: string;
-  onCurrentUserActivated: () => Promise<void>;
-}
-
 export function createUseUsers({ profileRepository }: CreateUseUsersDependencies) {
-  return function useUsers({ currentUserId, onCurrentUserActivated }: UseUsersOptions) {
+  return function useUsers() {
     const [users, setUsers] = useState<Profile[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activatingId, setActivatingId] = useState<string | null>(null);
@@ -61,10 +56,6 @@ export function createUseUsers({ profileRepository }: CreateUseUsersDependencies
         setUsers((current) =>
           current.map((item) => (item.id === activeUser.id ? activeUser : item)),
         );
-
-        if (user.id === currentUserId) {
-          await onCurrentUserActivated();
-        }
       } catch {
         setHasError(true);
       } finally {
