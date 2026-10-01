@@ -8,7 +8,9 @@ export interface NewPendingProfile {
 
 export interface ProfileRepository {
   findById(id: string): Promise<Profile | null>;
+  findAll(): Promise<Profile[]>;
   createPending(profile: NewPendingProfile): Promise<Profile>;
+  activate(id: string): Promise<Profile>;
 }
 
 export class ProfileRepositoryError extends Error {

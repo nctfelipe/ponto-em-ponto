@@ -1,26 +1,33 @@
-import { FirebaseIdentityProvider } from '@/infrastructure/firebase/auth/firebase-identity-provider';
-import { FirestoreProfileRepository } from '@/infrastructure/firebase/firestore/firestore-profile-repository';
+import { Navigate, Route, Routes } from 'react-router';
+import { UsersPage } from '@/ui/admin/users/UsersPage';
 import { AuthenticationPage } from '@/ui/authentication/AuthenticationPage';
-import { Dashboard } from '@/ui/dashboard/Dashboard';
+import { useSession } from '@/ui/composition';
 import { AccessErrorPage } from '@/ui/feedback/AccessErrorPage';
 import { LoadingPage } from '@/ui/feedback/LoadingPage';
-import { useSession } from '@/ui/session/useSession';
-
-const identityProvider = new FirebaseIdentityProvider();
-const profileRepository = new FirestoreProfileRepository();
+import { HomePage } from '@/ui/home/HomePage';
+import { AuthenticatedLayout } from '@/ui/layout/AuthenticatedLayout';
+import { PendingApprovalPage } from '@/ui/profile/PendingApprovalPage';
 
 function App() {
-  const session = useSession({ identityProvider, profileRepository });
+  const session = useSession();
 
   if (session.state.status === 'loading') return <LoadingPage />;
 
   if (session.state.status === 'anonymous') {
     return (
-      <AuthenticationPage
-        onSignIn={session.signIn}
-        onSignInWithGoogle={session.signInWithGoogle}
-        onSignUp={session.signUp}
-      />
+      <Routes>
+        <Route
+          element={
+            <AuthenticationPage
+              onSignIn={session.signIn}
+              onSignInWithGoogle={session.signInWithGoogle}
+              onSignUp={session.signUp}
+            />
+          }
+          path="/login"
+        />
+        <Route element={<Navigate replace to="/login" />} path="*" />
+      </Routes>
     );
   }
 
@@ -39,7 +46,26 @@ function App() {
     );
   }
 
-  return <Dashboard onSignOut={session.signOut} />;
+  const { identity, profile } = session.state;
+
+  if (profile.status === 'PENDING') {
+    return (
+      <Routes>
+        <Route element={<PendingApprovalPage onSignOut={session.signOut} />} path="/pending" />
+        <Route element={<Navigate replace to="/pending" />} path="*" />
+      </Routes>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route element={<AuthenticatedLayout identity={identity} onSignOut={session.signOut} />}>
+        <Route element={<HomePage />} index />
+        {identity.isAdmin && <Route element={<UsersPage />} path="users" />}
+      </Route>
+      <Route element={<Navigate replace to="/" />} path="*" />
+    </Routes>
+  );
 }
 
 export default App;

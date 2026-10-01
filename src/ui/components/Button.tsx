@@ -1,8 +1,10 @@
 import type { ButtonHTMLAttributes } from 'react';
 
 type ButtonVariant = 'primary' | 'secondary';
+type ButtonSize = 'small' | 'medium';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  size?: ButtonSize;
   variant?: ButtonVariant;
 }
 
@@ -11,10 +13,20 @@ const variantClasses: Record<ButtonVariant, string> = {
   secondary: 'border border-slate-300 text-slate-700 hover:bg-slate-50',
 };
 
-export function Button({ className = '', variant = 'primary', ...props }: ButtonProps) {
+const sizeClasses: Record<ButtonSize, string> = {
+  small: 'px-3 py-2',
+  medium: 'px-4 py-3',
+};
+
+export function Button({
+  className = '',
+  size = 'medium',
+  variant = 'primary',
+  ...props
+}: ButtonProps) {
   return (
     <button
-      className={`rounded-lg px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${variantClasses[variant]} ${className}`}
+      className={`rounded-lg text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${sizeClasses[size]} ${variantClasses[variant]} ${className}`}
       {...props}
     />
   );

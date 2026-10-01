@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Alert } from '@/ui/components/Alert';
 import { Button } from '@/ui/components/Button';
 import { PageCard } from '@/ui/components/PageCard';
 
@@ -24,9 +25,9 @@ export function AccessErrorPage({ onRetry, onSignOut }: AccessErrorPageProps) {
 
   return (
     <PageCard title="Ponto em Ponto">
-      <p className="mt-3 text-sm leading-6 text-slate-600" role="alert">
-        Não foi possível concluir seu acesso. Tente novamente.
-      </p>
+      <div className="mt-3">
+        <Alert variant="error">Não foi possível concluir seu acesso. Tente novamente.</Alert>
+      </div>
       <div className="mt-6 flex gap-3">
         <Button disabled={isBusy} onClick={() => void run(onRetry)} type="button">
           Tentar novamente
