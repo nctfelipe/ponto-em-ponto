@@ -1,6 +1,9 @@
+import { AuthenticationDivider } from '@/ui/authentication/AuthenticationDivider';
+import { AuthenticationModeSelector } from '@/ui/authentication/AuthenticationModeSelector';
+import type { AuthenticationMode } from '@/ui/authentication/useAuthenticationForm';
+import { Alert } from '@/ui/components/Alert';
 import { Button } from '@/ui/components/Button';
 import { TextField } from '@/ui/components/TextField';
-import type { AuthenticationMode } from '@/ui/authentication/useAuthenticationForm';
 
 interface AuthenticationFormProps {
   errorMessage: string | null;
@@ -21,24 +24,7 @@ export function AuthenticationForm({
 }: AuthenticationFormProps) {
   return (
     <>
-      <div className="mt-6 grid grid-cols-2 rounded-lg bg-slate-100 p-1">
-        <ModeButton
-          active={mode === 'sign-in'}
-          onClick={() => {
-            onModeChange('sign-in');
-          }}
-        >
-          Entrar
-        </ModeButton>
-        <ModeButton
-          active={mode === 'sign-up'}
-          onClick={() => {
-            onModeChange('sign-up');
-          }}
-        >
-          Cadastrar
-        </ModeButton>
-      </div>
+      <AuthenticationModeSelector mode={mode} onChange={onModeChange} />
 
       <form className="mt-6 space-y-4" onSubmit={(event) => void onSubmit(event)}>
         {mode === 'sign-up' && (
@@ -64,22 +50,14 @@ export function AuthenticationForm({
           />
         )}
 
-        {errorMessage && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-            {errorMessage}
-          </p>
-        )}
+        {errorMessage && <Alert variant="error">{errorMessage}</Alert>}
 
         <Button className="w-full" disabled={isSubmitting} type="submit">
           {isSubmitting ? 'Aguarde...' : mode === 'sign-in' ? 'Entrar' : 'Criar conta'}
         </Button>
       </form>
 
-      <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-slate-400">
-        <span className="h-px flex-1 bg-slate-200" />
-        ou
-        <span className="h-px flex-1 bg-slate-200" />
-      </div>
+      <AuthenticationDivider />
 
       <Button
         className="w-full"
@@ -91,25 +69,5 @@ export function AuthenticationForm({
         Continuar com Google
       </Button>
     </>
-  );
-}
-
-interface ModeButtonProps {
-  active: boolean;
-  children: string;
-  onClick: () => void;
-}
-
-function ModeButton({ active, children, onClick }: ModeButtonProps) {
-  return (
-    <button
-      className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-        active ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-600 hover:text-slate-950'
-      }`}
-      onClick={onClick}
-      type="button"
-    >
-      {children}
-    </button>
   );
 }

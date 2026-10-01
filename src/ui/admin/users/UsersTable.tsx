@@ -35,6 +35,7 @@ export function UsersTable({ activatingId, onActivate, users }: UsersTableProps)
                   <Button
                     disabled={activatingId === user.id}
                     onClick={() => void onActivate(user)}
+                    size="small"
                     type="button"
                   >
                     {activatingId === user.id ? 'Ativando...' : 'Ativar'}
