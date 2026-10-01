@@ -14,6 +14,11 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isActiveUser() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.status == 'ACTIVE';
+    }
+
     match /profiles/{userId} {
       allow create: if isCurrentUser(userId)
         && request.resource.data.keys().hasOnly([
@@ -42,6 +47,25 @@ service cloud.firestore {
         ]);
 
       allow delete: if false;
+    }
+
+    match /timeEntries/{entryId} {
+      allow create: if isActiveUser()
+        && request.resource.data.keys().hasOnly([
+          'userId',
+          'recordedAt',
+          'dayKey',
+          'monthKey'
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.recordedAt == request.time
+        && request.resource.data.dayKey is string
+        && request.resource.data.monthKey is string;
+
+      allow get, list: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow update, delete: if false;
     }
   }
 }
