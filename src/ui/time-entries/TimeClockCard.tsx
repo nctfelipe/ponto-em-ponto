@@ -1,10 +1,8 @@
-import { MAX_DAILY_TIME_ENTRIES } from '@/application/time-entries/register-time-entry';
-import { Button } from '@/ui/components/Button';
+import { LiveTimeEntryButton } from '@/ui/time-entries/LiveTimeEntryButton';
 
 interface TimeClockCardProps {
   canRecord: boolean;
   currentDateLabel: string;
-  entryCount: number;
   isRegistering: boolean;
   onRequestRecord: () => void;
 }
@@ -12,7 +10,6 @@ interface TimeClockCardProps {
 export function TimeClockCard({
   canRecord,
   currentDateLabel,
-  entryCount,
   isRegistering,
   onRequestRecord,
 }: TimeClockCardProps) {
@@ -21,18 +18,11 @@ export function TimeClockCard({
       <p className="text-sm font-medium text-slate-600 first-letter:uppercase">
         {currentDateLabel}
       </p>
-      <p className="mt-1 text-sm text-slate-500">
-        {entryCount} de {MAX_DAILY_TIME_ENTRIES} batidas registradas
-      </p>
-      <Button
-        className="mt-6 w-full"
-        disabled={!canRecord || isRegistering}
+      <LiveTimeEntryButton
+        isAvailable={canRecord}
+        isRegistering={isRegistering}
         onClick={onRequestRecord}
-        size="large"
-        type="button"
-      >
-        {canRecord ? 'Registrar ponto' : 'Limite diário atingido'}
-      </Button>
+      />
     </section>
   );
 }

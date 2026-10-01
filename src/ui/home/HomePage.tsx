@@ -25,7 +25,6 @@ export function HomePage({ userId }: HomePageProps) {
       <TimeClockCard
         canRecord={timeEntries.canRecord}
         currentDateLabel={timeEntries.currentDateLabel}
-        entryCount={timeEntries.entries.length}
         isRegistering={timeEntries.isRegistering}
         onRequestRecord={() => {
           setIsConfirmationOpen(true);
