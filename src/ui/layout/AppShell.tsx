@@ -18,7 +18,7 @@ export function AppShell({ navigationItems, onSignOut }: AppShellProps) {
       </header>
       <div className="flex-1 md:flex">
         <NavigationSidebar items={navigationItems} />
-        <div className="min-w-0 flex-1 p-6">
+        <div className="min-w-0 flex-1 p-4 pb-24 sm:p-6 sm:pb-24 md:pb-6">
           <Outlet />
         </div>
       </div>

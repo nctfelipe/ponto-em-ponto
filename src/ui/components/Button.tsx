@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes } from 'react';
 
 type ButtonVariant = 'primary' | 'secondary';
-type ButtonSize = 'small' | 'medium';
+type ButtonSize = 'small' | 'medium' | 'large';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
@@ -14,8 +14,9 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  small: 'px-3 py-2',
-  medium: 'px-4 py-3',
+  small: 'px-3 py-2 text-sm',
+  medium: 'px-4 py-3 text-sm',
+  large: 'px-6 py-5 text-base',
 };
 
 export function Button({
@@ -26,7 +27,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={`rounded-lg text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${sizeClasses[size]} ${variantClasses[variant]} ${className}`}
+      className={`rounded-lg font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${sizeClasses[size]} ${variantClasses[variant]} ${className}`}
       {...props}
     />
   );
