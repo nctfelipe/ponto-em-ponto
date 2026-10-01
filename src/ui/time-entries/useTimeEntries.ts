@@ -1,50 +1,41 @@
 import { useCallback, useEffect, useState } from 'react';
-import { formatBusinessDate, getBusinessDateKeys } from '@/application/time-entries/business-time';
 import {
   DailyTimeEntryLimitError,
-  MAX_DAILY_TIME_ENTRIES,
-  registerTimeEntry,
-} from '@/application/time-entries/register-time-entry';
-import type { TimeEntryRepository } from '@/application/time-entries/time-entry-repository';
-import type { TimeEntry } from '@/domain/time-entry';
+  type DailyTimeEntries,
+  type TimeEntryService,
+} from '@/application/time-entries/time-entry-service';
+import { formatBusinessDate } from '@/ui/formatters/business-time';
 
 interface CreateUseTimeEntriesDependencies {
-  timeEntryRepository: TimeEntryRepository;
+  timeEntryService: TimeEntryService;
 }
 
-export function createUseTimeEntries({ timeEntryRepository }: CreateUseTimeEntriesDependencies) {
+export function createUseTimeEntries({ timeEntryService }: CreateUseTimeEntriesDependencies) {
   return function useTimeEntries(userId: string) {
-    const [entries, setEntries] = useState<TimeEntry[]>([]);
-    const [currentDate, setCurrentDate] = useState(() => new Date());
+    const [dailyEntries, setDailyEntries] = useState<DailyTimeEntries>(() => ({
+      canRegister: true,
+      date: new Date(),
+      entries: [],
+    }));
     const [isLoading, setIsLoading] = useState(true);
     const [isRegistering, setIsRegistering] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [reloadCount, setReloadCount] = useState(0);
 
-    const load = useCallback(async () => {
-      const now = new Date();
-      const { dayKey } = getBusinessDateKeys(now);
-      setCurrentDate(now);
+    const findToday = useCallback(() => timeEntryService.findToday(userId, new Date()), [userId]);
+
+    function load() {
       setIsLoading(true);
       setErrorMessage(null);
-
-      try {
-        setEntries(await timeEntryRepository.findByUserAndDay(userId, dayKey));
-      } catch {
-        setErrorMessage('Não foi possível carregar as batidas de hoje.');
-      } finally {
-        setIsLoading(false);
-      }
-    }, [userId]);
+      setReloadCount((current) => current + 1);
+    }
 
     useEffect(() => {
       let isActive = true;
-      const now = new Date();
-      const { dayKey } = getBusinessDateKeys(now);
 
-      void timeEntryRepository
-        .findByUserAndDay(userId, dayKey)
-        .then((todayEntries) => {
-          if (isActive) setEntries(todayEntries);
+      void findToday()
+        .then((result) => {
+          if (isActive) setDailyEntries(result);
         })
         .catch(() => {
           if (isActive) setErrorMessage('Não foi possível carregar as batidas de hoje.');
@@ -56,24 +47,18 @@ export function createUseTimeEntries({ timeEntryRepository }: CreateUseTimeEntri
       return () => {
         isActive = false;
       };
-    }, [userId]);
+    }, [findToday, reloadCount]);
 
     async function record() {
       setIsRegistering(true);
       setErrorMessage(null);
 
       try {
-        const entry = await registerTimeEntry({ now: new Date(), userId }, timeEntryRepository);
-        setEntries((current) =>
-          [...current, entry].sort(
-            (left, right) => left.recordedAt.getTime() - right.recordedAt.getTime(),
-          ),
-        );
-        setCurrentDate(entry.recordedAt);
+        setDailyEntries(await timeEntryService.register(userId, new Date()));
       } catch (error: unknown) {
         setErrorMessage(
           error instanceof DailyTimeEntryLimitError
-            ? 'O limite de oito batidas do dia foi atingido.'
+            ? 'Os registros do dia já foram concluídos.'
             : 'Não foi possível registrar o ponto. Tente novamente.',
         );
       } finally {
@@ -82,9 +67,9 @@ export function createUseTimeEntries({ timeEntryRepository }: CreateUseTimeEntri
     }
 
     return {
-      canRecord: entries.length < MAX_DAILY_TIME_ENTRIES,
-      currentDateLabel: formatBusinessDate(currentDate),
-      entries,
+      canRecord: dailyEntries.canRegister,
+      currentDateLabel: formatBusinessDate(dailyEntries.date),
+      entries: dailyEntries.entries,
       errorMessage,
       isLoading,
       isRegistering,

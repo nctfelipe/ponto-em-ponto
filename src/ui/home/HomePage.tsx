@@ -36,7 +36,7 @@ export function HomePage({ userId }: HomePageProps) {
       {timeEntries.isLoading && <p role="status">Carregando batidas...</p>}
 
       {timeEntries.errorMessage && !timeEntries.isLoading && (
-        <Button onClick={() => void timeEntries.load()} type="button" variant="secondary">
+        <Button onClick={timeEntries.load} type="button" variant="secondary">
           Tentar novamente
         </Button>
       )}

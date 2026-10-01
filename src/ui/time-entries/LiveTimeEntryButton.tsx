@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { formatBusinessTime } from '@/application/time-entries/business-time';
 import { Button } from '@/ui/components/Button';
+import { formatBusinessTime } from '@/ui/formatters/business-time';
 
 interface LiveTimeEntryButtonProps {
   isAvailable: boolean;

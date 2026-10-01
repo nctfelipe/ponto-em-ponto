@@ -61,9 +61,7 @@ export class FirestoreTimeEntryRepository implements TimeEntryRepository {
         ),
       );
 
-      return snapshot.docs
-        .map((entry) => toTimeEntry(entry.id, entry.data() as TimeEntryDocument))
-        .sort((left, right) => left.recordedAt.getTime() - right.recordedAt.getTime());
+      return snapshot.docs.map((entry) => toTimeEntry(entry.id, entry.data() as TimeEntryDocument));
     } catch (error: unknown) {
       throw new TimeEntryRepositoryError('Unable to read time entries.', { cause: error });
     }

@@ -1,5 +1,5 @@
-import { formatBusinessShortTime } from '@/application/time-entries/business-time';
 import type { TimeEntry } from '@/domain/time-entry';
+import { formatBusinessShortTime } from '@/ui/formatters/business-time';
 
 interface TimeEntryTimelineProps {
   entries: TimeEntry[];
