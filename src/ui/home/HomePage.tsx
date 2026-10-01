@@ -5,7 +5,6 @@ import { ConfirmationDialog } from '@/ui/components/ConfirmationDialog';
 import { PageContent } from '@/ui/components/PageContent';
 import { useTimeEntries } from '@/ui/composition';
 import { TimeClockCard } from '@/ui/time-entries/TimeClockCard';
-import { TimeEntryList } from '@/ui/time-entries/TimeEntryList';
 
 interface HomePageProps {
   userId: string;
@@ -25,6 +24,7 @@ export function HomePage({ userId }: HomePageProps) {
       <TimeClockCard
         canRecord={timeEntries.canRecord}
         currentDateLabel={timeEntries.currentDateLabel}
+        entries={timeEntries.entries}
         isRegistering={timeEntries.isRegistering}
         onRequestRecord={() => {
           setIsConfirmationOpen(true);
@@ -33,11 +33,7 @@ export function HomePage({ userId }: HomePageProps) {
 
       {timeEntries.errorMessage && <Alert variant="error">{timeEntries.errorMessage}</Alert>}
 
-      {timeEntries.isLoading ? (
-        <p role="status">Carregando batidas...</p>
-      ) : (
-        <TimeEntryList entries={timeEntries.entries} />
-      )}
+      {timeEntries.isLoading && <p role="status">Carregando batidas...</p>}
 
       {timeEntries.errorMessage && !timeEntries.isLoading && (
         <Button onClick={() => void timeEntries.load()} type="button" variant="secondary">
@@ -47,7 +43,7 @@ export function HomePage({ userId }: HomePageProps) {
 
       <ConfirmationDialog
         confirmLabel="Confirmar"
-        description="O horário oficial será definido pelo servidor no momento da confirmação."
+        description="Uma nova batida será adicionada à sua jornada de hoje."
         isConfirming={timeEntries.isRegistering}
         isOpen={isConfirmationOpen}
         onCancel={() => {

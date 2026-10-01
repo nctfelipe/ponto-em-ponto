@@ -24,6 +24,12 @@ const timeFormatter = new Intl.DateTimeFormat('pt-BR', {
   timeZone: BUSINESS_TIME_ZONE,
 });
 
+const shortTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: BUSINESS_TIME_ZONE,
+});
+
 export function getBusinessDateKeys(date: Date): BusinessDateKeys {
   const parts = Object.fromEntries(
     dateKeyFormatter
@@ -47,4 +53,8 @@ export function formatBusinessDate(date: Date) {
 
 export function formatBusinessTime(date: Date) {
   return timeFormatter.format(date);
+}
+
+export function formatBusinessShortTime(date: Date) {
+  return shortTimeFormatter.format(date);
 }

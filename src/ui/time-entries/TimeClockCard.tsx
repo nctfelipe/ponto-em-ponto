@@ -1,8 +1,11 @@
+import type { TimeEntry } from '@/domain/time-entry';
 import { LiveTimeEntryButton } from '@/ui/time-entries/LiveTimeEntryButton';
+import { TimeEntryTimeline } from '@/ui/time-entries/TimeEntryTimeline';
 
 interface TimeClockCardProps {
   canRecord: boolean;
   currentDateLabel: string;
+  entries: TimeEntry[];
   isRegistering: boolean;
   onRequestRecord: () => void;
 }
@@ -10,6 +13,7 @@ interface TimeClockCardProps {
 export function TimeClockCard({
   canRecord,
   currentDateLabel,
+  entries,
   isRegistering,
   onRequestRecord,
 }: TimeClockCardProps) {
@@ -18,6 +22,7 @@ export function TimeClockCard({
       <p className="text-sm font-medium text-slate-600 first-letter:uppercase">
         {currentDateLabel}
       </p>
+      <TimeEntryTimeline entries={entries} />
       <LiveTimeEntryButton
         isAvailable={canRecord}
         isRegistering={isRegistering}

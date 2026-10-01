@@ -27,7 +27,7 @@ export function LiveTimeEntryButton({
 
   return (
     <Button
-      className="mt-6 w-full"
+      className="w-full"
       disabled={!isAvailable || isRegistering}
       onClick={onClick}
       size="large"
