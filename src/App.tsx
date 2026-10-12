@@ -63,11 +63,17 @@ function App() {
     <Routes>
       <Route element={<AuthenticatedLayout identity={identity} onSignOut={session.signOut} />}>
         <Route element={<HomePage userId={identity.id} />} index />
-        <Route element={<TimeEntryHistoryPage userId={identity.id} />} path="time-entries" />
+        <Route
+          element={<TimeEntryHistoryPage requestedById={identity.id} userId={identity.id} />}
+          path="time-entries"
+        />
         {identity.isAdmin && (
           <>
             <Route element={<UsersPage />} path="users" />
-            <Route element={<AdminTimeEntryHistoryPage />} path="users/:userId/time-entries" />
+            <Route
+              element={<AdminTimeEntryHistoryPage requestedById={identity.id} />}
+              path="users/:userId/time-entries"
+            />
           </>
         )}
       </Route>

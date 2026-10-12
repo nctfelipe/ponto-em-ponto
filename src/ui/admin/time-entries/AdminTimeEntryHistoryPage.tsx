@@ -7,7 +7,11 @@ import { PageContent } from '@/ui/components/PageContent';
 import { useUserProfile } from '@/ui/composition';
 import { TimeEntryHistory } from '@/ui/time-entry-history/TimeEntryHistory';
 
-export function AdminTimeEntryHistoryPage() {
+interface AdminTimeEntryHistoryPageProps {
+  requestedById: string;
+}
+
+export function AdminTimeEntryHistoryPage({ requestedById }: AdminTimeEntryHistoryPageProps) {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
 
@@ -16,6 +20,7 @@ export function AdminTimeEntryHistoryPage() {
   return (
     <AdminTimeEntryHistoryContent
       userId={userId}
+      requestedById={requestedById}
       onBack={() => {
         void navigate('/users');
       }}
@@ -25,10 +30,15 @@ export function AdminTimeEntryHistoryPage() {
 
 interface AdminTimeEntryHistoryContentProps {
   onBack: () => void;
+  requestedById: string;
   userId: string;
 }
 
-function AdminTimeEntryHistoryContent({ onBack, userId }: AdminTimeEntryHistoryContentProps) {
+function AdminTimeEntryHistoryContent({
+  onBack,
+  requestedById,
+  userId,
+}: AdminTimeEntryHistoryContentProps) {
   const userProfile = useUserProfile(userId);
 
   return (
@@ -58,7 +68,7 @@ function AdminTimeEntryHistoryContent({ onBack, userId }: AdminTimeEntryHistoryC
       {!userProfile.isLoading && !userProfile.hasError && userProfile.profile && (
         <>
           <UserHistoryContext onBack={onBack} profile={userProfile.profile} />
-          <TimeEntryHistory userId={userId} />
+          <TimeEntryHistory requestedById={requestedById} userId={userId} />
         </>
       )}
     </PageContent>

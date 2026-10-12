@@ -46,3 +46,57 @@ export function formatWorkedDuration(milliseconds: number) {
 
   return `${String(hours)}h${String(minutes).padStart(2, '0')}`;
 }
+
+const businessDateTimeInputFormatter = new Intl.DateTimeFormat('en-CA', {
+  day: '2-digit',
+  hour: '2-digit',
+  hourCycle: 'h23',
+  minute: '2-digit',
+  month: '2-digit',
+  timeZone: BUSINESS_TIME_ZONE,
+  year: 'numeric',
+});
+
+export function formatBusinessDateTimeInput(date: Date) {
+  const parts = businessDateTimeInputFormatter.formatToParts(date);
+  const getPart = (type: Intl.DateTimeFormatPartTypes) => {
+    const value = parts.find((part) => part.type === type)?.value;
+    if (!value) throw new RangeError('Unable to format date and time.');
+    return value;
+  };
+
+  return `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}`;
+}
+
+export function parseBusinessDateTimeInput(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match) throw new RangeError('Invalid date and time.');
+
+  const [, year, month, day, hour, minute] = match;
+  const target = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+  );
+  let result = new Date(target);
+
+  for (let iteration = 0; iteration < 2; iteration += 1) {
+    const currentValue = formatBusinessDateTimeInput(result);
+    const currentMatch = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(currentValue);
+    if (!currentMatch) break;
+
+    const [, currentYear, currentMonth, currentDay, currentHour, currentMinute] = currentMatch;
+    const current = Date.UTC(
+      Number(currentYear),
+      Number(currentMonth) - 1,
+      Number(currentDay),
+      Number(currentHour),
+      Number(currentMinute),
+    );
+    result = new Date(result.getTime() + target - current);
+  }
+
+  return result;
+}
