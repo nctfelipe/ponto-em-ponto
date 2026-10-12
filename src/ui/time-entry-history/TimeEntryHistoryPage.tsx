@@ -27,13 +27,7 @@ export function TimeEntryHistoryPage({ userId }: TimeEntryHistoryPageProps) {
         </>
       )}
 
-      {!history.isLoading && !history.hasError && history.entries.length === 0 && (
-        <p>Nenhuma batida registrada no mês selecionado.</p>
-      )}
-
-      {!history.isLoading && !history.hasError && history.entries.length > 0 && (
-        <TimeEntryHistoryList entries={history.entries} />
-      )}
+      {!history.isLoading && !history.hasError && <TimeEntryHistoryList days={history.days} />}
     </PageContent>
   );
 }

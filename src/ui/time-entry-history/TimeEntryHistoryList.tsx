@@ -1,53 +1,51 @@
-import type { TimeEntry } from '@/domain/time-entry';
-import { formatBusinessDay, formatBusinessShortTime } from '@/ui/formatters/business-time';
+import type { MonthlyTimeEntryDay } from '@/application/time-entries/time-entry-service';
+import { formatBusinessDayKey, formatWorkedDuration } from '@/ui/formatters/business-time';
+import { TimeEntryBadge } from '@/ui/time-entry-history/TimeEntryBadge';
 
 interface TimeEntryHistoryListProps {
-  entries: TimeEntry[];
+  days: MonthlyTimeEntryDay[];
 }
 
-interface DailyTimeEntryGroup {
-  dayKey: string;
-  date: Date;
-  entries: TimeEntry[];
-}
-
-function groupByDay(entries: TimeEntry[]) {
-  return entries.reduce<DailyTimeEntryGroup[]>((groups, entry) => {
-    const currentGroup = groups.at(-1);
-
-    if (currentGroup?.dayKey === entry.dayKey) {
-      currentGroup.entries.push(entry);
-      return groups;
-    }
-
-    groups.push({ dayKey: entry.dayKey, date: entry.recordedAt, entries: [entry] });
-    return groups;
-  }, []);
-}
-
-export function TimeEntryHistoryList({ entries }: TimeEntryHistoryListProps) {
+export function TimeEntryHistoryList({ days }: TimeEntryHistoryListProps) {
   return (
-    <div className="space-y-3">
-      {groupByDay(entries).map((group) => (
-        <section className="rounded-lg border border-slate-200 bg-white p-4" key={group.dayKey}>
-          <h3 className="font-semibold capitalize text-slate-950">
-            {formatBusinessDay(group.date)}
-          </h3>
-          <ol className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {group.entries.map((entry) => (
-              <li className="rounded-lg bg-slate-50 px-3 py-2 text-center" key={entry.id}>
-                <span className="text-xs text-slate-500">Batida</span>
-                <time
-                  className="block font-semibold text-slate-950"
-                  dateTime={entry.recordedAt.toISOString()}
-                >
-                  {formatBusinessShortTime(entry.recordedAt)}
-                </time>
-              </li>
-            ))}
-          </ol>
-        </section>
-      ))}
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="hidden grid-cols-[minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem] gap-4 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 md:grid">
+        <span>Data</span>
+        <span>Batidas</span>
+        <span className="text-right">Total</span>
+      </div>
+
+      <ol className="divide-y divide-slate-200">
+        {days.map((day) => (
+          <li
+            className={`grid gap-3 px-4 py-3 md:grid-cols-[minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem] md:items-center md:gap-4 ${day.isFuture ? 'bg-slate-50 text-slate-400' : ''}`}
+            key={day.dayKey}
+          >
+            <div className="flex items-center justify-between gap-4 md:block">
+              <time className="font-medium capitalize" dateTime={day.dayKey}>
+                {formatBusinessDayKey(day.dayKey)}
+              </time>
+              <span className="font-semibold md:hidden">
+                {formatWorkedDuration(day.workedMilliseconds)}
+              </span>
+            </div>
+
+            {day.entries.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {day.entries.map((entry) => (
+                  <TimeEntryBadge entry={entry} key={entry.id} />
+                ))}
+              </div>
+            ) : (
+              <span className="text-sm text-slate-500">Sem registros</span>
+            )}
+
+            <span className="hidden text-right font-semibold md:block">
+              {formatWorkedDuration(day.workedMilliseconds)}
+            </span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

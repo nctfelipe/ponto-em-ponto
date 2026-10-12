@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getBusinessDateKeys } from '@/application/time-entries/business-time';
-import type { TimeEntryService } from '@/application/time-entries/time-entry-service';
-import type { TimeEntry } from '@/domain/time-entry';
+import type {
+  MonthlyTimeEntryDay,
+  TimeEntryService,
+} from '@/application/time-entries/time-entry-service';
 
 interface CreateUseTimeEntryHistoryDependencies {
   timeEntryService: TimeEntryService;
@@ -12,13 +14,13 @@ export function createUseTimeEntryHistory({
 }: CreateUseTimeEntryHistoryDependencies) {
   return function useTimeEntryHistory(userId: string) {
     const [monthKey, setMonthKey] = useState(() => getBusinessDateKeys(new Date()).monthKey);
-    const [entries, setEntries] = useState<TimeEntry[]>([]);
+    const [days, setDays] = useState<MonthlyTimeEntryDay[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
     const [reloadCount, setReloadCount] = useState(0);
 
     const findMonth = useCallback(
-      () => timeEntryService.findMonth(userId, monthKey),
+      () => timeEntryService.findMonth(userId, monthKey, new Date()),
       [monthKey, userId],
     );
 
@@ -30,7 +32,7 @@ export function createUseTimeEntryHistory({
 
       void findMonth()
         .then((result) => {
-          if (isActive) setEntries(result);
+          if (isActive) setDays(result.days);
         })
         .catch(() => {
           if (isActive) setHasError(true);
@@ -49,7 +51,7 @@ export function createUseTimeEntryHistory({
     }
 
     return {
-      entries,
+      days,
       hasError,
       isLoading,
       load,

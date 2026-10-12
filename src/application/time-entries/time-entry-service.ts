@@ -10,6 +10,18 @@ export interface DailyTimeEntries {
   entries: TimeEntry[];
 }
 
+export interface MonthlyTimeEntryDay {
+  dayKey: string;
+  entries: TimeEntry[];
+  isFuture: boolean;
+  workedMilliseconds: number;
+}
+
+export interface MonthlyTimeEntries {
+  days: MonthlyTimeEntryDay[];
+  monthKey: string;
+}
+
 export class DailyTimeEntryLimitError extends Error {
   constructor() {
     super('Daily time entry limit reached.');
@@ -29,8 +41,58 @@ function createDailyTimeEntries(date: Date, entries: TimeEntry[]): DailyTimeEntr
   };
 }
 
+function calculateWorkedMilliseconds(entries: TimeEntry[]) {
+  let total = 0;
+
+  for (let index = 0; index + 1 < entries.length; index += 2) {
+    const entry = entries[index];
+    const exit = entries[index + 1];
+
+    if (entry && exit) total += exit.recordedAt.getTime() - entry.recordedAt.getTime();
+  }
+
+  return total;
+}
+
+function createMonthlyTimeEntries(
+  monthKey: string,
+  entries: TimeEntry[],
+  now: Date,
+): MonthlyTimeEntries {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(monthKey);
+
+  if (!match) throw new RangeError('Invalid month key.');
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const { dayKey: currentDayKey } = getBusinessDateKeys(now);
+  const entriesByDay = entries.reduce<Map<string, TimeEntry[]>>((groups, entry) => {
+    const dailyEntries = groups.get(entry.dayKey) ?? [];
+    dailyEntries.push(entry);
+    groups.set(entry.dayKey, dailyEntries);
+    return groups;
+  }, new Map());
+
+  const days = Array.from({ length: daysInMonth }, (_, index) => {
+    const dayKey = `${monthKey}-${String(index + 1).padStart(2, '0')}`;
+    const dailyEntries = [...(entriesByDay.get(dayKey) ?? [])].sort(
+      (left, right) => left.recordedAt.getTime() - right.recordedAt.getTime(),
+    );
+
+    return {
+      dayKey,
+      entries: dailyEntries,
+      isFuture: dayKey > currentDayKey,
+      workedMilliseconds: calculateWorkedMilliseconds(dailyEntries),
+    };
+  });
+
+  return { days, monthKey };
+}
+
 export interface TimeEntryService {
-  findMonth(userId: string, monthKey: string): Promise<TimeEntry[]>;
+  findMonth(userId: string, monthKey: string, now: Date): Promise<MonthlyTimeEntries>;
   findToday(userId: string, now: Date): Promise<DailyTimeEntries>;
   register(userId: string, now: Date): Promise<DailyTimeEntries>;
 }
@@ -42,8 +104,9 @@ export class DefaultTimeEntryService implements TimeEntryService {
     this.repository = repository;
   }
 
-  findMonth(userId: string, monthKey: string) {
-    return this.repository.findByUserAndMonth(userId, monthKey);
+  async findMonth(userId: string, monthKey: string, now: Date) {
+    const entries = await this.repository.findByUserAndMonth(userId, monthKey);
+    return createMonthlyTimeEntries(monthKey, entries, now);
   }
 
   async findToday(userId: string, now: Date) {

@@ -25,3 +25,24 @@ export const formatBusinessShortTime = createDateTimeFormatter('pt-BR', {
   minute: '2-digit',
   timeZone: BUSINESS_TIME_ZONE,
 });
+
+const formatCalendarDay = createDateTimeFormatter('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  timeZone: 'UTC',
+  weekday: 'short',
+});
+
+export function formatBusinessDayKey(dayKey: string) {
+  return formatCalendarDay(new Date(`${dayKey}T00:00:00.000Z`));
+}
+
+export function formatWorkedDuration(milliseconds: number) {
+  if (milliseconds === 0) return '-';
+
+  const totalMinutes = Math.floor(milliseconds / 60_000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${String(hours)}h${String(minutes).padStart(2, '0')}`;
+}

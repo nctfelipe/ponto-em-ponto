@@ -22,6 +22,7 @@ function createTimeEntry(id: string, recordedAt: string): TimeEntry {
 class FakeTimeEntryRepository implements TimeEntryRepository {
   readonly createInputs: NewTimeEntry[] = [];
   readonly findInputs: { dayKey: string; userId: string }[] = [];
+  readonly findMonthInputs: { monthKey: string; userId: string }[] = [];
   private readonly entries: TimeEntry[];
   private readonly createdEntry: TimeEntry;
 
@@ -43,7 +44,8 @@ class FakeTimeEntryRepository implements TimeEntryRepository {
     return Promise.resolve([...this.entries]);
   }
 
-  findByUserAndMonth() {
+  findByUserAndMonth(userId: string, monthKey: string) {
+    this.findMonthInputs.push({ monthKey, userId });
     return Promise.resolve([...this.entries]);
   }
 }
@@ -95,5 +97,73 @@ describe('DefaultTimeEntryService', () => {
     });
     await expect(service.register('user-1', now)).rejects.toBeInstanceOf(DailyTimeEntryLimitError);
     expect(repository.createInputs).toHaveLength(0);
+  });
+
+  it('builds every day of a leap month and associates entries with their business day', async () => {
+    const repository = new FakeTimeEntryRepository([
+      {
+        ...createTimeEntry('afternoon-exit', '2028-02-01T20:00:00.000Z'),
+        dayKey: '2028-02-01',
+        monthKey: '2028-02',
+      },
+      {
+        ...createTimeEntry('morning-entry', '2028-02-01T11:00:00.000Z'),
+        dayKey: '2028-02-01',
+        monthKey: '2028-02',
+      },
+      {
+        ...createTimeEntry('morning-exit', '2028-02-01T15:00:00.000Z'),
+        dayKey: '2028-02-01',
+        monthKey: '2028-02',
+      },
+      {
+        ...createTimeEntry('afternoon-entry', '2028-02-01T16:00:00.000Z'),
+        dayKey: '2028-02-01',
+        monthKey: '2028-02',
+      },
+    ]);
+    const service = new DefaultTimeEntryService(repository);
+
+    const result = await service.findMonth(
+      'user-1',
+      '2028-02',
+      new Date('2028-02-15T15:00:00.000Z'),
+    );
+
+    expect(repository.findMonthInputs).toEqual([{ monthKey: '2028-02', userId: 'user-1' }]);
+    expect(result.days).toHaveLength(29);
+    expect(result.days[0]).toMatchObject({
+      dayKey: '2028-02-01',
+      isFuture: false,
+      workedMilliseconds: 8 * 60 * 60 * 1000,
+    });
+    expect(result.days[0]?.entries.map(({ id }) => id)).toEqual([
+      'morning-entry',
+      'morning-exit',
+      'afternoon-entry',
+      'afternoon-exit',
+    ]);
+    expect(result.days[28]).toMatchObject({
+      dayKey: '2028-02-29',
+      entries: [],
+      isFuture: true,
+      workedMilliseconds: 0,
+    });
+  });
+
+  it('ignores an unmatched final entry when calculating worked time', async () => {
+    const repository = new FakeTimeEntryRepository([
+      createTimeEntry('third', '2026-05-15T16:00:00.000Z'),
+      createTimeEntry('first', '2026-05-15T11:00:00.000Z'),
+      createTimeEntry('second', '2026-05-15T15:00:00.000Z'),
+    ]);
+    const service = new DefaultTimeEntryService(repository);
+
+    const result = await service.findMonth('user-1', '2026-05', now);
+
+    expect(result.days[14]).toMatchObject({
+      dayKey: '2026-05-15',
+      workedMilliseconds: 4 * 60 * 60 * 1000,
+    });
   });
 });
