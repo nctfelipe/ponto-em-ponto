@@ -20,6 +20,7 @@ const originalEntry: TimeEntry = {
   id: 'entry-1',
   monthKey: '2026-09',
   recordedAt: new Date('2026-09-10T11:00:00.000Z'),
+  status: 'ACTIVE',
   userId: 'user-1',
 };
 
@@ -87,14 +88,6 @@ class FakeAdjustmentRepository implements TimeEntryAdjustmentRepository {
       this.adjustments.filter((adjustment) => adjustment.targetTimeEntryId === timeEntryId),
     );
   }
-
-  findByUserAndDay(userId: string, dayKey: string) {
-    return Promise.resolve(
-      this.adjustments.filter(
-        (adjustment) => adjustment.userId === userId && adjustment.dayKey === dayKey,
-      ),
-    );
-  }
 }
 
 class FakeTimePeriodRepository implements TimePeriodRepository {
@@ -124,18 +117,10 @@ function createService() {
 
 describe('TimeEntryAdjustmentService', () => {
   it('creates a change request from the current effective time', async () => {
-    const { adjustmentRepository, service } = createService();
+    const { adjustmentRepository, service, timeEntryRepository } = createService();
     const effectiveTime = new Date('2026-09-10T10:55:00.000Z');
     const proposedTime = new Date('2026-09-10T11:05:00.000Z');
-    adjustmentRepository.adjustments = [
-      createAdjustment({
-        decidedAt: new Date('2026-09-11T14:00:00.000Z'),
-        decidedById: 'admin-1',
-        proposedRecordedAt: effectiveTime,
-        status: 'APPROVED',
-        type: 'CHANGE',
-      }),
-    ];
+    timeEntryRepository.entries = [{ ...originalEntry, recordedAt: effectiveTime }];
 
     await service.requestChange({
       proposedRecordedAt: proposedTime,
@@ -171,15 +156,9 @@ describe('TimeEntryAdjustmentService', () => {
     ).rejects.toBeInstanceOf(TimeEntryAdjustmentConflictError);
   });
 
-  it('prevents changes to an effectively removed time entry', async () => {
-    const { adjustmentRepository, service } = createService();
-    adjustmentRepository.adjustments = [
-      createAdjustment({
-        decidedAt: new Date('2026-09-11T14:00:00.000Z'),
-        decidedById: 'admin-1',
-        status: 'APPROVED',
-      }),
-    ];
+  it('prevents changes to a removed time entry', async () => {
+    const { service, timeEntryRepository } = createService();
+    timeEntryRepository.entries = [{ ...originalEntry, status: 'REMOVED' }];
 
     await expect(
       service.requestChange({

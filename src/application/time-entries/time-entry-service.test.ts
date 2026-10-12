@@ -16,6 +16,7 @@ function createTimeEntry(id: string, recordedAt: string): TimeEntry {
     recordedAt: new Date(recordedAt),
     dayKey: '2026-05-15',
     monthKey: '2026-05',
+    status: 'ACTIVE',
   };
 }
 
@@ -101,6 +102,27 @@ describe('DefaultTimeEntryService', () => {
     });
     await expect(service.register('user-1', now)).rejects.toBeInstanceOf(DailyTimeEntryLimitError);
     expect(repository.createInputs).toHaveLength(0);
+  });
+
+  it('ignores removed entries when reading a day and enforcing its limit', async () => {
+    const removedEntry = {
+      ...createTimeEntry('removed', '2026-05-15T08:00:00.000Z'),
+      status: 'REMOVED' as const,
+    };
+    const activeEntries = Array.from({ length: 7 }, (_, index) =>
+      createTimeEntry(
+        `entry-${String(index)}`,
+        `2026-05-15T${String(index + 9).padStart(2, '0')}:00:00.000Z`,
+      ),
+    );
+    const repository = new FakeTimeEntryRepository([removedEntry, ...activeEntries]);
+    const service = new DefaultTimeEntryService(repository);
+
+    await expect(service.findToday('user-1', now)).resolves.toMatchObject({
+      canRegister: true,
+      entries: activeEntries,
+    });
+    await expect(service.register('user-1', now)).resolves.toMatchObject({ canRegister: false });
   });
 
   it('builds every day of a leap month and associates entries with their business day', async () => {

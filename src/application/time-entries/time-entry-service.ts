@@ -30,9 +30,9 @@ export class DailyTimeEntryLimitError extends Error {
 }
 
 function createDailyTimeEntries(date: Date, entries: TimeEntry[]): DailyTimeEntries {
-  const sortedEntries = [...entries].sort(
-    (left, right) => left.recordedAt.getTime() - right.recordedAt.getTime(),
-  );
+  const sortedEntries = entries
+    .filter((entry) => entry.status === 'ACTIVE')
+    .sort((left, right) => left.recordedAt.getTime() - right.recordedAt.getTime());
 
   return {
     canRegister: sortedEntries.length < MAX_DAILY_TIME_ENTRIES,
@@ -67,12 +67,14 @@ function createMonthlyTimeEntries(
   const month = Number(match[2]);
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const { dayKey: currentDayKey } = getBusinessDateKeys(now);
-  const entriesByDay = entries.reduce<Map<string, TimeEntry[]>>((groups, entry) => {
-    const dailyEntries = groups.get(entry.dayKey) ?? [];
-    dailyEntries.push(entry);
-    groups.set(entry.dayKey, dailyEntries);
-    return groups;
-  }, new Map());
+  const entriesByDay = entries
+    .filter((entry) => entry.status === 'ACTIVE')
+    .reduce<Map<string, TimeEntry[]>>((groups, entry) => {
+      const dailyEntries = groups.get(entry.dayKey) ?? [];
+      dailyEntries.push(entry);
+      groups.set(entry.dayKey, dailyEntries);
+      return groups;
+    }, new Map());
 
   const days = Array.from({ length: daysInMonth }, (_, index) => {
     const dayKey = `${monthKey}-${String(index + 1).padStart(2, '0')}`;
@@ -119,11 +121,13 @@ export class DefaultTimeEntryService implements TimeEntryService {
     const { dayKey, monthKey } = getBusinessDateKeys(now);
     const currentEntries = await this.repository.findByUserAndDay(userId, dayKey);
 
-    if (currentEntries.length >= MAX_DAILY_TIME_ENTRIES) {
+    const activeEntries = currentEntries.filter((entry) => entry.status === 'ACTIVE');
+
+    if (activeEntries.length >= MAX_DAILY_TIME_ENTRIES) {
       throw new DailyTimeEntryLimitError();
     }
 
     const entry = await this.repository.create({ dayKey, monthKey, userId });
-    return createDailyTimeEntries(now, [...currentEntries, entry]);
+    return createDailyTimeEntries(now, [...activeEntries, entry]);
   }
 }

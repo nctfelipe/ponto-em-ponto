@@ -69,10 +69,12 @@ service cloud.firestore {
           'userId',
           'recordedAt',
           'dayKey',
-          'monthKey'
+          'monthKey',
+          'status'
         ])
         && isCurrentUser(request.resource.data.userId)
         && request.resource.data.recordedAt == request.time
+        && request.resource.data.status == 'ACTIVE'
         && request.resource.data.dayKey is string
         && request.resource.data.monthKey is string;
 

@@ -16,7 +16,7 @@ import {
   type NewTimeEntry,
   type TimeEntryRepository,
 } from '@/application/time-entries/time-entry-repository';
-import type { TimeEntry } from '@/domain/time-entry';
+import type { TimeEntry, TimeEntryStatus } from '@/domain/time-entry';
 import { getFirebaseApp } from '@/infrastructure/firebase/app';
 
 interface TimeEntryDocument {
@@ -24,6 +24,7 @@ interface TimeEntryDocument {
   recordedAt: Timestamp;
   dayKey: string;
   monthKey: string;
+  status?: TimeEntryStatus;
 }
 
 function toTimeEntry(id: string, data: TimeEntryDocument): TimeEntry {
@@ -33,6 +34,7 @@ function toTimeEntry(id: string, data: TimeEntryDocument): TimeEntry {
     recordedAt: data.recordedAt.toDate(),
     dayKey: data.dayKey,
     monthKey: data.monthKey,
+    status: data.status ?? 'ACTIVE',
   };
 }
 
@@ -44,6 +46,7 @@ export class FirestoreTimeEntryRepository implements TimeEntryRepository {
       const reference = await addDoc(collection(this.firestore, 'timeEntries'), {
         ...entry,
         recordedAt: serverTimestamp(),
+        status: 'ACTIVE',
       });
       const snapshot = await getDoc(reference);
 

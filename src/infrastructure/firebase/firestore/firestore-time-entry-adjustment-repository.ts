@@ -87,24 +87,4 @@ export class FirestoreTimeEntryAdjustmentRepository implements TimeEntryAdjustme
       });
     }
   }
-
-  async findByUserAndDay(userId: string, dayKey: string) {
-    try {
-      const snapshot = await getDocs(
-        query(
-          collection(this.firestore, 'timeEntryAdjustments'),
-          where('userId', '==', userId),
-          where('dayKey', '==', dayKey),
-        ),
-      );
-
-      return snapshot.docs.map((adjustment) =>
-        toAdjustment(adjustment.id, adjustment.data() as TimeEntryAdjustmentDocument),
-      );
-    } catch (error: unknown) {
-      throw new TimeEntryAdjustmentRepositoryError('Unable to read daily adjustment requests.', {
-        cause: error,
-      });
-    }
-  }
 }

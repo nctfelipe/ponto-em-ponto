@@ -14,7 +14,6 @@ export interface NewTimeEntryAdjustment {
 export interface TimeEntryAdjustmentRepository {
   create(adjustment: NewTimeEntryAdjustment): Promise<TimeEntryAdjustment>;
   findByTimeEntryId(timeEntryId: string): Promise<TimeEntryAdjustment[]>;
-  findByUserAndDay(userId: string, dayKey: string): Promise<TimeEntryAdjustment[]>;
 }
 
 export class TimeEntryAdjustmentRepositoryError extends Error {
