@@ -1,8 +1,8 @@
 import type {
   Identity,
   IdentityProvider,
-  SignInCredentials,
-  SignUpCredentials,
+  AuthenticationCredentials,
+  RegistrationCredentials,
 } from '@/application/identity/identity-provider';
 import type { ProfileRepository } from '@/application/profiles/profile-repository';
 import type { Profile } from '@/domain/profile';
@@ -15,12 +15,12 @@ export interface AuthenticatedSession {
 export type ObservedSession = AuthenticatedSession | { identity: Identity; profile: null } | null;
 
 export interface SessionService {
-  ensureProfile(identity: Identity): Promise<AuthenticatedSession>;
+  provisionProfile(identity: Identity): Promise<AuthenticatedSession>;
   onSessionChanged(callback: (session: ObservedSession) => void, onError: () => void): () => void;
-  signIn(credentials: SignInCredentials): Promise<AuthenticatedSession>;
-  signInWithGoogle(): Promise<AuthenticatedSession>;
+  authenticate(credentials: AuthenticationCredentials): Promise<AuthenticatedSession>;
+  authenticateWithGoogle(): Promise<AuthenticatedSession>;
   signOut(): Promise<void>;
-  signUp(credentials: SignUpCredentials): Promise<AuthenticatedSession>;
+  register(credentials: RegistrationCredentials): Promise<AuthenticatedSession>;
 }
 
 export class DefaultSessionService implements SessionService {
@@ -32,7 +32,7 @@ export class DefaultSessionService implements SessionService {
     this.profileRepository = profileRepository;
   }
 
-  async ensureProfile(identity: Identity) {
+  async provisionProfile(identity: Identity) {
     const existingProfile = await this.profileRepository.findById(identity.id);
     const profile =
       existingProfile ??
@@ -76,16 +76,16 @@ export class DefaultSessionService implements SessionService {
     };
   }
 
-  async signUp(credentials: SignUpCredentials) {
-    return this.ensureProfile(await this.identityProvider.signUp(credentials));
+  async register(credentials: RegistrationCredentials) {
+    return this.provisionProfile(await this.identityProvider.register(credentials));
   }
 
-  async signIn(credentials: SignInCredentials) {
-    return this.ensureProfile(await this.identityProvider.signIn(credentials));
+  async authenticate(credentials: AuthenticationCredentials) {
+    return this.provisionProfile(await this.identityProvider.authenticate(credentials));
   }
 
-  async signInWithGoogle() {
-    return this.ensureProfile(await this.identityProvider.signInWithGoogle());
+  async authenticateWithGoogle() {
+    return this.provisionProfile(await this.identityProvider.authenticateWithGoogle());
   }
 
   signOut() {

@@ -1,20 +1,20 @@
 import type {
-  SignInCredentials,
-  SignUpCredentials,
+  AuthenticationCredentials,
+  RegistrationCredentials,
 } from '@/application/identity/identity-provider';
 import { PageCard } from '@/ui/components/PageCard';
 import { AuthenticationForm } from '@/ui/authentication/AuthenticationForm';
 import { useAuthenticationForm } from '@/ui/authentication/useAuthenticationForm';
 
 interface AuthenticationPageProps {
-  onSignIn: (credentials: SignInCredentials) => Promise<void>;
-  onSignUp: (credentials: SignUpCredentials) => Promise<void>;
-  onSignInWithGoogle: () => Promise<void>;
+  onAuthenticate: (credentials: AuthenticationCredentials) => Promise<void>;
+  onRegister: (credentials: RegistrationCredentials) => Promise<void>;
+  onAuthenticateWithGoogle: () => Promise<void>;
 }
 
 export function AuthenticationPage(props: AuthenticationPageProps) {
   const form = useAuthenticationForm(props);
-  const title = form.mode === 'sign-in' ? 'Acesse sua conta' : 'Crie sua conta';
+  const title = form.mode === 'authenticate' ? 'Acesse sua conta' : 'Crie sua conta';
 
   return (
     <PageCard eyebrow="Ponto em Ponto" title={title}>
@@ -22,7 +22,7 @@ export function AuthenticationPage(props: AuthenticationPageProps) {
         errorMessage={form.errorMessage}
         isSubmitting={form.isSubmitting}
         mode={form.mode}
-        onGoogleSignIn={form.signInWithGoogle}
+        onAuthenticateWithGoogle={form.authenticateWithGoogle}
         onModeChange={form.changeMode}
         onSubmit={form.submit}
       />

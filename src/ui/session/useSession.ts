@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type {
   Identity,
-  SignInCredentials,
-  SignUpCredentials,
+  AuthenticationCredentials,
+  RegistrationCredentials,
 } from '@/application/identity/identity-provider';
 import type { AuthenticatedSession, SessionService } from '@/application/session/session-service';
 import type { Profile } from '@/domain/profile';
@@ -63,16 +63,16 @@ export function createUseSession({ sessionService }: CreateUseSessionDependencie
       }
     }
 
-    function signUp(credentials: SignUpCredentials) {
-      return runAuthentication(() => sessionService.signUp(credentials));
+    function register(credentials: RegistrationCredentials) {
+      return runAuthentication(() => sessionService.register(credentials));
     }
 
-    function signIn(credentials: SignInCredentials) {
-      return runAuthentication(() => sessionService.signIn(credentials));
+    function authenticate(credentials: AuthenticationCredentials) {
+      return runAuthentication(() => sessionService.authenticate(credentials));
     }
 
-    function signInWithGoogle() {
-      return runAuthentication(() => sessionService.signInWithGoogle());
+    function authenticateWithGoogle() {
+      return runAuthentication(() => sessionService.authenticateWithGoogle());
     }
 
     async function signOut() {
@@ -82,16 +82,16 @@ export function createUseSession({ sessionService }: CreateUseSessionDependencie
 
     function retryProfile() {
       if (state.status !== 'profile-missing') return Promise.resolve();
-      return runAuthentication(() => sessionService.ensureProfile(state.identity));
+      return runAuthentication(() => sessionService.provisionProfile(state.identity));
     }
 
     return {
       state,
       retryProfile,
-      signIn,
-      signInWithGoogle,
+      authenticate,
+      authenticateWithGoogle,
+      register,
       signOut,
-      signUp,
     };
   };
 }

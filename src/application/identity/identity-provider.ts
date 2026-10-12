@@ -5,21 +5,21 @@ export interface Identity {
   isAdmin: boolean;
 }
 
-export interface SignUpCredentials {
+export interface RegistrationCredentials {
   displayName: string;
   email: string;
   password: string;
 }
 
-export interface SignInCredentials {
+export interface AuthenticationCredentials {
   email: string;
   password: string;
 }
 
 export interface IdentityProvider {
-  signUp(credentials: SignUpCredentials): Promise<Identity>;
-  signIn(credentials: SignInCredentials): Promise<Identity>;
-  signInWithGoogle(): Promise<Identity>;
+  register(credentials: RegistrationCredentials): Promise<Identity>;
+  authenticate(credentials: AuthenticationCredentials): Promise<Identity>;
+  authenticateWithGoogle(): Promise<Identity>;
   signOut(): Promise<void>;
   onIdentityChanged(callback: (identity: Identity | null) => void, onError: () => void): () => void;
 }

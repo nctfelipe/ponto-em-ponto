@@ -1,19 +1,19 @@
 import { useState, type SyntheticEvent } from 'react';
 import type {
-  SignInCredentials,
-  SignUpCredentials,
+  AuthenticationCredentials,
+  RegistrationCredentials,
 } from '@/application/identity/identity-provider';
 
-export type AuthenticationMode = 'sign-in' | 'sign-up';
+export type AuthenticationMode = 'authenticate' | 'register';
 
 interface UseAuthenticationFormOptions {
-  onSignIn: (credentials: SignInCredentials) => Promise<void>;
-  onSignUp: (credentials: SignUpCredentials) => Promise<void>;
-  onSignInWithGoogle: () => Promise<void>;
+  onAuthenticate: (credentials: AuthenticationCredentials) => Promise<void>;
+  onRegister: (credentials: RegistrationCredentials) => Promise<void>;
+  onAuthenticateWithGoogle: () => Promise<void>;
 }
 
 export function useAuthenticationForm(options: UseAuthenticationFormOptions) {
-  const [mode, setMode] = useState<AuthenticationMode>('sign-in');
+  const [mode, setMode] = useState<AuthenticationMode>('authenticate');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -35,8 +35,8 @@ export function useAuthenticationForm(options: UseAuthenticationFormOptions) {
     setIsSubmitting(true);
 
     try {
-      if (mode === 'sign-in') {
-        await options.onSignIn({ email, password });
+      if (mode === 'authenticate') {
+        await options.onAuthenticate({ email, password });
         return;
       }
 
@@ -50,10 +50,10 @@ export function useAuthenticationForm(options: UseAuthenticationFormOptions) {
         return;
       }
 
-      await options.onSignUp({ displayName, email, password });
+      await options.onRegister({ displayName, email, password });
     } catch {
       setErrorMessage(
-        mode === 'sign-in'
+        mode === 'authenticate'
           ? 'Não foi possível entrar. Verifique suas credenciais e tente novamente.'
           : 'Não foi possível concluir o cadastro. Verifique os dados e tente novamente.',
       );
@@ -62,12 +62,12 @@ export function useAuthenticationForm(options: UseAuthenticationFormOptions) {
     }
   }
 
-  async function signInWithGoogle() {
+  async function authenticateWithGoogle() {
     setErrorMessage(null);
     setIsSubmitting(true);
 
     try {
-      await options.onSignInWithGoogle();
+      await options.onAuthenticateWithGoogle();
     } catch {
       setErrorMessage('Não foi possível entrar com o Google. Tente novamente.');
     } finally {
@@ -80,7 +80,7 @@ export function useAuthenticationForm(options: UseAuthenticationFormOptions) {
     errorMessage,
     isSubmitting,
     mode,
-    signInWithGoogle,
+    authenticateWithGoogle,
     submit,
   };
 }

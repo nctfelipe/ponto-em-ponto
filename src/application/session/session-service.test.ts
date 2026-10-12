@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type {
   Identity,
   IdentityProvider,
-  SignInCredentials,
-  SignUpCredentials,
+  AuthenticationCredentials,
+  RegistrationCredentials,
 } from '@/application/identity/identity-provider';
 import type {
   NewPendingProfile,
@@ -27,21 +27,21 @@ const activeProfile: Profile = {
 };
 
 class FakeIdentityProvider implements IdentityProvider {
-  readonly signInInputs: SignInCredentials[] = [];
-  readonly signUpInputs: SignUpCredentials[] = [];
+  readonly authenticationInputs: AuthenticationCredentials[] = [];
+  readonly registrationInputs: RegistrationCredentials[] = [];
   private identityCallback: ((value: Identity | null) => void) | null = null;
 
-  signUp(credentials: SignUpCredentials) {
-    this.signUpInputs.push(credentials);
+  register(credentials: RegistrationCredentials) {
+    this.registrationInputs.push(credentials);
     return Promise.resolve(identity);
   }
 
-  signIn(credentials: SignInCredentials) {
-    this.signInInputs.push(credentials);
+  authenticate(credentials: AuthenticationCredentials) {
+    this.authenticationInputs.push(credentials);
     return Promise.resolve(identity);
   }
 
-  signInWithGoogle() {
+  authenticateWithGoogle() {
     return Promise.resolve(identity);
   }
 
@@ -88,7 +88,7 @@ class FakeProfileRepository implements ProfileRepository {
 }
 
 describe('DefaultSessionService', () => {
-  it('creates a pending profile after sign-up when the profile is missing', async () => {
+  it('provisions a pending profile for a newly registered identity', async () => {
     const identityProvider = new FakeIdentityProvider();
     const profileRepository = new FakeProfileRepository(null);
     const service = new DefaultSessionService(identityProvider, profileRepository);
@@ -98,21 +98,21 @@ describe('DefaultSessionService', () => {
       password: 'password',
     };
 
-    const session = await service.signUp(credentials);
+    const session = await service.register(credentials);
 
-    expect(identityProvider.signUpInputs).toEqual([credentials]);
+    expect(identityProvider.registrationInputs).toEqual([credentials]);
     expect(profileRepository.createInputs).toEqual([
       { id: identity.id, displayName: identity.displayName, email: identity.email },
     ]);
     expect(session).toMatchObject({ identity, profile: { status: 'PENDING' } });
   });
 
-  it('reuses an existing profile after sign-in', async () => {
+  it('preserves the existing profile after authentication', async () => {
     const identityProvider = new FakeIdentityProvider();
     const profileRepository = new FakeProfileRepository(activeProfile);
     const service = new DefaultSessionService(identityProvider, profileRepository);
 
-    const session = await service.signIn({ email: identity.email, password: 'password' });
+    const session = await service.authenticate({ email: identity.email, password: 'password' });
 
     expect(session).toEqual({ identity, profile: activeProfile });
     expect(profileRepository.createInputs).toHaveLength(0);

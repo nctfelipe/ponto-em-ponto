@@ -19,9 +19,9 @@ function App() {
         <Route
           element={
             <AuthenticationPage
-              onSignIn={session.signIn}
-              onSignInWithGoogle={session.signInWithGoogle}
-              onSignUp={session.signUp}
+              onAuthenticate={session.authenticate}
+              onAuthenticateWithGoogle={session.authenticateWithGoogle}
+              onRegister={session.register}
             />
           }
           path="/login"

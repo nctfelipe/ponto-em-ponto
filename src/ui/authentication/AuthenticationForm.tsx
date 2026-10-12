@@ -10,7 +10,7 @@ interface AuthenticationFormProps {
   isSubmitting: boolean;
   mode: AuthenticationMode;
   onModeChange: (mode: AuthenticationMode) => void;
-  onGoogleSignIn: () => Promise<void>;
+  onAuthenticateWithGoogle: () => Promise<void>;
   onSubmit: (event: React.SyntheticEvent<HTMLFormElement, SubmitEvent>) => Promise<void>;
 }
 
@@ -18,7 +18,7 @@ export function AuthenticationForm({
   errorMessage,
   isSubmitting,
   mode,
-  onGoogleSignIn,
+  onAuthenticateWithGoogle,
   onModeChange,
   onSubmit,
 }: AuthenticationFormProps) {
@@ -27,20 +27,20 @@ export function AuthenticationForm({
       <AuthenticationModeSelector mode={mode} onChange={onModeChange} />
 
       <form className="mt-6 space-y-4" onSubmit={(event) => void onSubmit(event)}>
-        {mode === 'sign-up' && (
+        {mode === 'register' && (
           <TextField autoComplete="name" label="Nome" name="displayName" required type="text" />
         )}
 
         <TextField autoComplete="email" label="E-mail" name="email" required type="email" />
         <TextField
-          autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
+          autoComplete={mode === 'authenticate' ? 'current-password' : 'new-password'}
           label="Senha"
           name="password"
           required
           type="password"
         />
 
-        {mode === 'sign-up' && (
+        {mode === 'register' && (
           <TextField
             autoComplete="new-password"
             label="Confirme a senha"
@@ -53,7 +53,7 @@ export function AuthenticationForm({
         {errorMessage && <Alert variant="error">{errorMessage}</Alert>}
 
         <Button className="w-full" disabled={isSubmitting} type="submit">
-          {isSubmitting ? 'Aguarde...' : mode === 'sign-in' ? 'Entrar' : 'Criar conta'}
+          {isSubmitting ? 'Aguarde...' : mode === 'authenticate' ? 'Entrar' : 'Criar conta'}
         </Button>
       </form>
 
@@ -62,7 +62,7 @@ export function AuthenticationForm({
       <Button
         className="w-full"
         disabled={isSubmitting}
-        onClick={() => void onGoogleSignIn()}
+        onClick={() => void onAuthenticateWithGoogle()}
         type="button"
         variant="secondary"
       >
