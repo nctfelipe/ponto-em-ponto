@@ -1,4 +1,5 @@
 import type { MonthlyTimeEntryDay } from '@/application/time-entries/time-entry-service';
+import { DataList, DataListBody, DataListHeader, DataListRow } from '@/ui/components/DataList';
 import { formatBusinessDayKey, formatWorkedDuration } from '@/ui/formatters/business-time';
 import { TimeEntryBadge } from '@/ui/time-entry-history/TimeEntryBadge';
 
@@ -8,24 +9,24 @@ interface TimeEntryHistoryListProps {
 
 export function TimeEntryHistoryList({ days }: TimeEntryHistoryListProps) {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-      <div className="hidden grid-cols-[minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem] gap-4 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 md:grid">
+    <DataList>
+      <DataListHeader className="grid-cols-[minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem]">
         <span>Data</span>
         <span>Batidas</span>
         <span className="text-right">Total</span>
-      </div>
+      </DataListHeader>
 
-      <ol className="divide-y divide-slate-200">
+      <DataListBody>
         {days.map((day) => (
-          <li
-            className={`grid gap-3 px-4 py-3 md:grid-cols-[minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem] md:items-center md:gap-4 ${day.isFuture ? 'bg-slate-50 text-slate-400' : ''}`}
+          <DataListRow
+            className={`md:grid-cols-[minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem] ${day.isFuture ? 'bg-background opacity-60' : ''}`}
             key={day.dayKey}
           >
             <div className="flex items-center justify-between gap-4 md:block">
               <time className="font-medium capitalize" dateTime={day.dayKey}>
                 {formatBusinessDayKey(day.dayKey)}
               </time>
-              <span className="font-semibold md:hidden">
+              <span className="font-medium md:hidden">
                 {formatWorkedDuration(day.workedMilliseconds)}
               </span>
             </div>
@@ -37,15 +38,15 @@ export function TimeEntryHistoryList({ days }: TimeEntryHistoryListProps) {
                 ))}
               </div>
             ) : (
-              <span className="text-sm text-slate-500">Sem registros</span>
+              <span className="text-content-muted">Sem registros</span>
             )}
 
-            <span className="hidden text-right font-semibold md:block">
+            <span className="hidden text-right font-medium md:block">
               {formatWorkedDuration(day.workedMilliseconds)}
             </span>
-          </li>
+          </DataListRow>
         ))}
-      </ol>
-    </div>
+      </DataListBody>
+    </DataList>
   );
 }

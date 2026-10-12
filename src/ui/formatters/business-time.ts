@@ -34,7 +34,7 @@ const formatCalendarDay = createDateTimeFormatter('pt-BR', {
 });
 
 export function formatBusinessDayKey(dayKey: string) {
-  return formatCalendarDay(new Date(`${dayKey}T00:00:00.000Z`));
+  return formatCalendarDay(new Date(`${dayKey}T00:00:00.000Z`)).replace(',', '');
 }
 
 export function formatWorkedDuration(milliseconds: number) {

@@ -1,5 +1,6 @@
 import { Alert } from '@/ui/components/Alert';
 import { Button } from '@/ui/components/Button';
+import { FeedbackMessage } from '@/ui/components/FeedbackMessage';
 import { PageContent } from '@/ui/components/PageContent';
 import { useTimeEntryHistory } from '@/ui/composition';
 import { MonthSelector } from '@/ui/time-entry-history/MonthSelector';
@@ -16,7 +17,9 @@ export function TimeEntryHistoryPage({ userId }: TimeEntryHistoryPageProps) {
     <PageContent title="Histórico de batidas">
       <MonthSelector monthKey={history.monthKey} onChange={history.selectMonth} />
 
-      {history.isLoading && <p role="status">Carregando histórico...</p>}
+      {history.isLoading && (
+        <FeedbackMessage variant="loading">Carregando histórico...</FeedbackMessage>
+      )}
 
       {!history.isLoading && history.hasError && (
         <>

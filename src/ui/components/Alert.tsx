@@ -8,8 +8,8 @@ interface AlertProps {
 }
 
 const variantClasses: Record<AlertVariant, string> = {
-  error: 'rounded-lg bg-red-50 px-3 py-2 text-red-700',
-  info: 'leading-6 text-slate-600',
+  error: 'rounded-lg bg-danger-subtle px-3 py-2 text-danger',
+  info: 'leading-6 text-content-secondary',
 };
 
 export function Alert({ children, variant = 'info' }: AlertProps) {
