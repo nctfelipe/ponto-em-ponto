@@ -15,8 +15,22 @@ service cloud.firestore {
     }
 
     function isActiveUser() {
+      return isActiveProfile(request.auth.uid);
+    }
+
+    function isActiveProfile(userId) {
       return isSignedIn()
-        && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.status == 'ACTIVE';
+        && get(/databases/$(database)/documents/profiles/$(userId)).data.status == 'ACTIVE';
+    }
+
+    function isOpenPeriod(userId, monthKey) {
+      let period = /databases/$(database)/documents/profiles/$(userId)/timePeriods/$(monthKey);
+      return !exists(period) || get(period).data.status == 'OPEN';
+    }
+
+    function isValidAdjustmentTarget(userId, timeEntryId) {
+      return timeEntryId is string
+        && get(/databases/$(database)/documents/timeEntries/$(timeEntryId)).data.userId == userId;
     }
 
     match /profiles/{userId} {
@@ -65,6 +79,71 @@ service cloud.firestore {
       allow get, list: if isCurrentUser(resource.data.userId) || isAdmin();
 
       allow update, delete: if false;
+    }
+
+    match /timeEntryAdjustments/{adjustmentId} {
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          'userId',
+          'requestedById',
+          'type',
+          'status',
+          'targetTimeEntryId',
+          'currentRecordedAt',
+          'proposedRecordedAt',
+          'dayKey',
+          'monthKey',
+          'requestedAt',
+          'decidedAt',
+          'decidedById'
+        ])
+        && request.resource.data.requestedById == request.auth.uid
+        && (isCurrentUser(request.resource.data.userId) || isAdmin())
+        && isActiveProfile(request.resource.data.userId)
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.dayKey is string
+        && request.resource.data.monthKey is string
+        && request.resource.data.requestedAt == request.time
+        && request.resource.data.decidedAt == null
+        && request.resource.data.decidedById == null
+        && isOpenPeriod(
+          request.resource.data.userId,
+          request.resource.data.monthKey
+        )
+        && (
+          (
+            request.resource.data.type == 'ADD'
+            && request.resource.data.targetTimeEntryId == null
+            && request.resource.data.currentRecordedAt == null
+            && request.resource.data.proposedRecordedAt is timestamp
+          )
+          || (
+            request.resource.data.type == 'CHANGE'
+            && isValidAdjustmentTarget(
+              request.resource.data.userId,
+              request.resource.data.targetTimeEntryId
+            )
+            && request.resource.data.currentRecordedAt is timestamp
+            && request.resource.data.proposedRecordedAt is timestamp
+          )
+          || (
+            request.resource.data.type == 'REMOVE'
+            && isValidAdjustmentTarget(
+              request.resource.data.userId,
+              request.resource.data.targetTimeEntryId
+            )
+            && request.resource.data.currentRecordedAt is timestamp
+            && request.resource.data.proposedRecordedAt == null
+          )
+        );
+
+      allow get, list: if isCurrentUser(resource.data.userId) || isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /profiles/{userId}/timePeriods/{monthKey} {
+      allow get, list: if isCurrentUser(userId) || isAdmin();
+      allow create, update, delete: if false;
     }
   }
 }

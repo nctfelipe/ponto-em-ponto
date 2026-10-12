@@ -2,6 +2,7 @@ import {
   Timestamp,
   addDoc,
   collection,
+  doc,
   getDoc,
   getDocs,
   getFirestore,
@@ -49,6 +50,17 @@ export class FirestoreTimeEntryRepository implements TimeEntryRepository {
       return toTimeEntry(snapshot.id, snapshot.data() as TimeEntryDocument);
     } catch (error: unknown) {
       throw new TimeEntryRepositoryError('Unable to create time entry.', { cause: error });
+    }
+  }
+
+  async findById(id: string) {
+    try {
+      const snapshot = await getDoc(doc(this.firestore, 'timeEntries', id));
+      return snapshot.exists()
+        ? toTimeEntry(snapshot.id, snapshot.data() as TimeEntryDocument)
+        : null;
+    } catch (error: unknown) {
+      throw new TimeEntryRepositoryError('Unable to read time entry.', { cause: error });
     }
   }
 

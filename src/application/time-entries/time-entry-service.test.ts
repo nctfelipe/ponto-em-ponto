@@ -39,6 +39,10 @@ class FakeTimeEntryRepository implements TimeEntryRepository {
     return Promise.resolve(this.createdEntry);
   }
 
+  findById(id: string) {
+    return Promise.resolve(this.entries.find((entry) => entry.id === id) ?? null);
+  }
+
   findByUserAndDay(userId: string, dayKey: string) {
     this.findInputs.push({ dayKey, userId });
     return Promise.resolve([...this.entries]);

@@ -8,6 +8,7 @@ export interface NewTimeEntry {
 
 export interface TimeEntryRepository {
   create(entry: NewTimeEntry): Promise<TimeEntry>;
+  findById(id: string): Promise<TimeEntry | null>;
   findByUserAndDay(userId: string, dayKey: string): Promise<TimeEntry[]>;
   findByUserAndMonth(userId: string, monthKey: string): Promise<TimeEntry[]>;
 }
