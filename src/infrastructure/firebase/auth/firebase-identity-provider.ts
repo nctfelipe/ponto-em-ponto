@@ -13,8 +13,8 @@ import {
   IdentityProviderError,
   type Identity,
   type IdentityProvider,
-  type SignInCredentials,
-  type SignUpCredentials,
+  type AuthenticationCredentials,
+  type RegistrationCredentials,
 } from '@/application/identity/identity-provider';
 import { getFirebaseApp } from '@/infrastructure/firebase/app';
 
@@ -33,7 +33,7 @@ export class FirebaseIdentityProvider implements IdentityProvider {
   private readonly auth = getAuth(getFirebaseApp());
   private readonly googleProvider = new GoogleAuthProvider();
 
-  async signUp(credentials: SignUpCredentials) {
+  async register(credentials: RegistrationCredentials) {
     try {
       const result = await createUserWithEmailAndPassword(
         this.auth,
@@ -49,7 +49,7 @@ export class FirebaseIdentityProvider implements IdentityProvider {
     }
   }
 
-  async signIn(credentials: SignInCredentials) {
+  async authenticate(credentials: AuthenticationCredentials) {
     try {
       const result = await signInWithEmailAndPassword(
         this.auth,
@@ -63,7 +63,7 @@ export class FirebaseIdentityProvider implements IdentityProvider {
     }
   }
 
-  async signInWithGoogle() {
+  async authenticateWithGoogle() {
     try {
       const result = await signInWithPopup(this.auth, this.googleProvider);
       return await toIdentity(result.user);

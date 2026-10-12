@@ -9,17 +9,17 @@ export function AuthenticationModeSelector({ mode, onChange }: AuthenticationMod
   return (
     <div className="mt-6 grid grid-cols-2 rounded-lg bg-slate-100 p-1">
       <ModeButton
-        active={mode === 'sign-in'}
+        active={mode === 'authenticate'}
         onClick={() => {
-          onChange('sign-in');
+          onChange('authenticate');
         }}
       >
         Entrar
       </ModeButton>
       <ModeButton
-        active={mode === 'sign-up'}
+        active={mode === 'register'}
         onClick={() => {
-          onChange('sign-up');
+          onChange('register');
         }}
       >
         Cadastrar
