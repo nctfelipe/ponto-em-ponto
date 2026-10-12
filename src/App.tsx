@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router';
+import { AdminTimeEntryHistoryPage } from '@/ui/admin/time-entries/AdminTimeEntryHistoryPage';
 import { UsersPage } from '@/ui/admin/users/UsersPage';
 import { AuthenticationPage } from '@/ui/authentication/AuthenticationPage';
 import { useSession } from '@/ui/composition';
@@ -63,7 +64,12 @@ function App() {
       <Route element={<AuthenticatedLayout identity={identity} onSignOut={session.signOut} />}>
         <Route element={<HomePage userId={identity.id} />} index />
         <Route element={<TimeEntryHistoryPage userId={identity.id} />} path="time-entries" />
-        {identity.isAdmin && <Route element={<UsersPage />} path="users" />}
+        {identity.isAdmin && (
+          <>
+            <Route element={<UsersPage />} path="users" />
+            <Route element={<AdminTimeEntryHistoryPage />} path="users/:userId/time-entries" />
+          </>
+        )}
       </Route>
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>

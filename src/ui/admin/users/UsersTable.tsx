@@ -6,6 +6,7 @@ import { DataList, DataListBody, DataListHeader, DataListRow } from '@/ui/compon
 interface UsersTableProps {
   activatingId: string | null;
   onActivate: (user: Profile) => Promise<void>;
+  onViewTimeEntries: (userId: string) => void;
   users: Profile[];
 }
 
@@ -17,10 +18,15 @@ const statusPresentation: Record<
   PENDING: { label: 'Pendente', variant: 'warning' },
 };
 
-export function UsersTable({ activatingId, onActivate, users }: UsersTableProps) {
+export function UsersTable({
+  activatingId,
+  onActivate,
+  onViewTimeEntries,
+  users,
+}: UsersTableProps) {
   return (
     <DataList>
-      <DataListHeader className="grid-cols-[minmax(10rem,1fr)_minmax(14rem,1.5fr)_8rem_8rem]">
+      <DataListHeader className="grid-cols-[minmax(10rem,1fr)_minmax(14rem,1.5fr)_8rem_13rem]">
         <span>Nome</span>
         <span>E-mail</span>
         <span>Status</span>
@@ -33,7 +39,7 @@ export function UsersTable({ activatingId, onActivate, users }: UsersTableProps)
 
           return (
             <DataListRow
-              className="md:grid-cols-[minmax(10rem,1fr)_minmax(14rem,1.5fr)_8rem_8rem]"
+              className="md:grid-cols-[minmax(10rem,1fr)_minmax(14rem,1.5fr)_8rem_13rem]"
               key={user.id}
             >
               <div className="flex items-center justify-between gap-3 md:block">
@@ -49,7 +55,17 @@ export function UsersTable({ activatingId, onActivate, users }: UsersTableProps)
                 <Badge variant={status.variant}>{status.label}</Badge>
               </span>
 
-              <div className="md:text-right">
+              <div className="flex flex-wrap gap-2 md:justify-end">
+                <Button
+                  onClick={() => {
+                    onViewTimeEntries(user.id);
+                  }}
+                  size="small"
+                  type="button"
+                  variant="secondary"
+                >
+                  Ver batidas
+                </Button>
                 {user.status === 'PENDING' && (
                   <Button
                     disabled={activatingId === user.id}

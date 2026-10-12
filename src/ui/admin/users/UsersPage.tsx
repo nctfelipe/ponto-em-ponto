@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router';
 import { useUsers } from '@/ui/composition';
 import { Alert } from '@/ui/components/Alert';
 import { Button } from '@/ui/components/Button';
@@ -6,6 +7,7 @@ import { PageContent } from '@/ui/components/PageContent';
 import { UsersTable } from '@/ui/admin/users/UsersTable';
 
 export function UsersPage() {
+  const navigate = useNavigate();
   const { activate, activatingId, hasError, isLoading, load, users } = useUsers();
 
   return (
@@ -26,7 +28,14 @@ export function UsersPage() {
       )}
 
       {!isLoading && !hasError && users.length > 0 && (
-        <UsersTable activatingId={activatingId} onActivate={activate} users={users} />
+        <UsersTable
+          activatingId={activatingId}
+          onActivate={activate}
+          onViewTimeEntries={(userId) => {
+            void navigate(`/users/${userId}/time-entries`);
+          }}
+          users={users}
+        />
       )}
     </PageContent>
   );
