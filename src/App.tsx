@@ -60,7 +60,7 @@ function App() {
   return (
     <Routes>
       <Route element={<AuthenticatedLayout identity={identity} onSignOut={session.signOut} />}>
-        <Route element={<HomePage />} index />
+        <Route element={<HomePage userId={identity.id} />} index />
         {identity.isAdmin && <Route element={<UsersPage />} path="users" />}
       </Route>
       <Route element={<Navigate replace to="/" />} path="*" />
