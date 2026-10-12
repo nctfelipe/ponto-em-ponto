@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   getFirestore,
+  orderBy,
   query,
   serverTimestamp,
   where,
@@ -64,6 +65,23 @@ export class FirestoreTimeEntryRepository implements TimeEntryRepository {
       return snapshot.docs.map((entry) => toTimeEntry(entry.id, entry.data() as TimeEntryDocument));
     } catch (error: unknown) {
       throw new TimeEntryRepositoryError('Unable to read time entries.', { cause: error });
+    }
+  }
+
+  async findByUserAndMonth(userId: string, monthKey: string) {
+    try {
+      const snapshot = await getDocs(
+        query(
+          collection(this.firestore, 'timeEntries'),
+          where('userId', '==', userId),
+          where('monthKey', '==', monthKey),
+          orderBy('recordedAt'),
+        ),
+      );
+
+      return snapshot.docs.map((entry) => toTimeEntry(entry.id, entry.data() as TimeEntryDocument));
+    } catch (error: unknown) {
+      throw new TimeEntryRepositoryError('Unable to read monthly time entries.', { cause: error });
     }
   }
 }

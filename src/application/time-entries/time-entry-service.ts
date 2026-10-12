@@ -30,6 +30,7 @@ function createDailyTimeEntries(date: Date, entries: TimeEntry[]): DailyTimeEntr
 }
 
 export interface TimeEntryService {
+  findMonth(userId: string, monthKey: string): Promise<TimeEntry[]>;
   findToday(userId: string, now: Date): Promise<DailyTimeEntries>;
   register(userId: string, now: Date): Promise<DailyTimeEntries>;
 }
@@ -39,6 +40,10 @@ export class DefaultTimeEntryService implements TimeEntryService {
 
   constructor(repository: TimeEntryRepository) {
     this.repository = repository;
+  }
+
+  findMonth(userId: string, monthKey: string) {
+    return this.repository.findByUserAndMonth(userId, monthKey);
   }
 
   async findToday(userId: string, now: Date) {

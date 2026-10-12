@@ -7,6 +7,7 @@ import { LoadingPage } from '@/ui/feedback/LoadingPage';
 import { HomePage } from '@/ui/home/HomePage';
 import { AuthenticatedLayout } from '@/ui/layout/AuthenticatedLayout';
 import { PendingApprovalPage } from '@/ui/profile/PendingApprovalPage';
+import { TimeEntryHistoryPage } from '@/ui/time-entry-history/TimeEntryHistoryPage';
 
 function App() {
   const session = useSession();
@@ -61,6 +62,7 @@ function App() {
     <Routes>
       <Route element={<AuthenticatedLayout identity={identity} onSignOut={session.signOut} />}>
         <Route element={<HomePage userId={identity.id} />} index />
+        <Route element={<TimeEntryHistoryPage userId={identity.id} />} path="time-entries" />
         {identity.isAdmin && <Route element={<UsersPage />} path="users" />}
       </Route>
       <Route element={<Navigate replace to="/" />} path="*" />

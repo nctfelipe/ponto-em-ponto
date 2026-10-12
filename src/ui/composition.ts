@@ -5,6 +5,7 @@ import { FirestoreProfileRepository } from '@/infrastructure/firebase/firestore/
 import { FirestoreTimeEntryRepository } from '@/infrastructure/firebase/firestore/firestore-time-entry-repository';
 import { createUseUsers } from '@/ui/admin/users/useUsers';
 import { createUseSession } from '@/ui/session/useSession';
+import { createUseTimeEntryHistory } from '@/ui/time-entry-history/useTimeEntryHistory';
 import { createUseTimeEntries } from '@/ui/time-entries/useTimeEntries';
 
 const identityProvider = new FirebaseIdentityProvider();
@@ -15,4 +16,5 @@ const timeEntryService = new DefaultTimeEntryService(timeEntryRepository);
 
 export const useSession = createUseSession({ sessionService });
 export const useUsers = createUseUsers({ profileRepository });
+export const useTimeEntryHistory = createUseTimeEntryHistory({ timeEntryService });
 export const useTimeEntries = createUseTimeEntries({ timeEntryService });

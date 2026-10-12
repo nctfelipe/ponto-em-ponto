@@ -1,0 +1,39 @@
+import { Alert } from '@/ui/components/Alert';
+import { Button } from '@/ui/components/Button';
+import { PageContent } from '@/ui/components/PageContent';
+import { useTimeEntryHistory } from '@/ui/composition';
+import { MonthSelector } from '@/ui/time-entry-history/MonthSelector';
+import { TimeEntryHistoryList } from '@/ui/time-entry-history/TimeEntryHistoryList';
+
+interface TimeEntryHistoryPageProps {
+  userId: string;
+}
+
+export function TimeEntryHistoryPage({ userId }: TimeEntryHistoryPageProps) {
+  const history = useTimeEntryHistory(userId);
+
+  return (
+    <PageContent title="Histórico de batidas">
+      <MonthSelector monthKey={history.monthKey} onChange={history.selectMonth} />
+
+      {history.isLoading && <p role="status">Carregando histórico...</p>}
+
+      {!history.isLoading && history.hasError && (
+        <>
+          <Alert variant="error">Não foi possível carregar o histórico.</Alert>
+          <Button onClick={history.load} type="button" variant="secondary">
+            Tentar novamente
+          </Button>
+        </>
+      )}
+
+      {!history.isLoading && !history.hasError && history.entries.length === 0 && (
+        <p>Nenhuma batida registrada no mês selecionado.</p>
+      )}
+
+      {!history.isLoading && !history.hasError && history.entries.length > 0 && (
+        <TimeEntryHistoryList entries={history.entries} />
+      )}
+    </PageContent>
+  );
+}
