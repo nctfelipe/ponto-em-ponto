@@ -57,7 +57,7 @@ const businessDateTimeInputFormatter = new Intl.DateTimeFormat('en-CA', {
   year: 'numeric',
 });
 
-export function formatBusinessDateTimeInput(date: Date) {
+function formatBusinessDateTimeInput(date: Date) {
   const parts = businessDateTimeInputFormatter.formatToParts(date);
   const getPart = (type: Intl.DateTimeFormatPartTypes) => {
     const value = parts.find((part) => part.type === type)?.value;
@@ -68,7 +68,7 @@ export function formatBusinessDateTimeInput(date: Date) {
   return `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}`;
 }
 
-export function parseBusinessDateTimeInput(value: string) {
+function parseBusinessDateTimeInput(value: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
   if (!match) throw new RangeError('Invalid date and time.');
 
@@ -99,4 +99,12 @@ export function parseBusinessDateTimeInput(value: string) {
   }
 
   return result;
+}
+
+export function formatBusinessTimeInput(date: Date) {
+  return formatBusinessDateTimeInput(date).slice(11);
+}
+
+export function parseBusinessDayAndTime(dayKey: string, time: string) {
+  return parseBusinessDateTimeInput(`${dayKey}T${time}`);
 }

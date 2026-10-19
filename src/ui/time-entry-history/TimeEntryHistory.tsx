@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import type { TimeEntry } from '@/domain/time-entry';
+import type { MonthlyTimeEntryDay } from '@/application/time-entries/time-entry-service';
 import { Alert } from '@/ui/components/Alert';
 import { Button } from '@/ui/components/Button';
 import { FeedbackMessage } from '@/ui/components/FeedbackMessage';
 import { useTimeEntryAdjustment, useTimeEntryHistory } from '@/ui/composition';
 import { TimeEntryAdjustmentDialog } from '@/ui/time-entry-history/TimeEntryAdjustmentDialog';
-import { TimeEntryHistoryControls } from '@/ui/time-entry-history/TimeEntryHistoryControls';
+import { MonthSelector } from '@/ui/time-entry-history/MonthSelector';
 import { TimeEntryHistoryList } from '@/ui/time-entry-history/TimeEntryHistoryList';
 
 interface TimeEntryHistoryProps {
@@ -16,29 +16,21 @@ interface TimeEntryHistoryProps {
 export function TimeEntryHistory({ requestedById, userId }: TimeEntryHistoryProps) {
   const history = useTimeEntryHistory(userId);
   const adjustment = useTimeEntryAdjustment({ requestedById, userId });
-  const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
-  const [isAdjustmentOpen, setIsAdjustmentOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<MonthlyTimeEntryDay | null>(null);
 
-  function openAdjustment(entry: TimeEntry | null) {
+  function openAdjustment(day: MonthlyTimeEntryDay) {
     adjustment.resetFeedback();
-    setSelectedEntry(entry);
-    setIsAdjustmentOpen(true);
+    setSelectedDay(day);
   }
 
   function closeAdjustment() {
     if (adjustment.isSubmitting) return;
-    setIsAdjustmentOpen(false);
+    setSelectedDay(null);
   }
 
   return (
     <>
-      <TimeEntryHistoryControls
-        monthKey={history.monthKey}
-        onAdd={() => {
-          openAdjustment(null);
-        }}
-        onMonthChange={history.selectMonth}
-      />
+      <MonthSelector monthKey={history.monthKey} onChange={history.selectMonth} />
 
       {history.isLoading && (
         <FeedbackMessage variant="loading">Carregando histórico...</FeedbackMessage>
@@ -59,9 +51,9 @@ export function TimeEntryHistory({ requestedById, userId }: TimeEntryHistoryProp
         <TimeEntryHistoryList days={history.days} onAdjust={openAdjustment} />
       )}
 
-      {isAdjustmentOpen && (
+      {selectedDay && (
         <TimeEntryAdjustmentDialog
-          entry={selectedEntry}
+          day={selectedDay}
           errorMessage={adjustment.errorMessage}
           isSubmitting={adjustment.isSubmitting}
           onCancel={closeAdjustment}
