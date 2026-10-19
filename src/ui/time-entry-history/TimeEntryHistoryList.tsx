@@ -1,15 +1,17 @@
 import type { MonthlyTimeEntryDay } from '@/application/time-entries/time-entry-service';
+import type { TimeEntryAdjustment } from '@/domain/time-entry-adjustment';
 import { Button } from '@/ui/components/Button';
 import { DataList, DataListBody, DataListHeader, DataListRow } from '@/ui/components/DataList';
 import { formatBusinessDayKey, formatWorkedDuration } from '@/ui/formatters/business-time';
 import { TimeEntryBadge } from '@/ui/time-entry-history/TimeEntryBadge';
 
 interface TimeEntryHistoryListProps {
+  adjustments: TimeEntryAdjustment[];
   days: MonthlyTimeEntryDay[];
   onAdjust: (day: MonthlyTimeEntryDay) => void;
 }
 
-export function TimeEntryHistoryList({ days, onAdjust }: TimeEntryHistoryListProps) {
+export function TimeEntryHistoryList({ adjustments, days, onAdjust }: TimeEntryHistoryListProps) {
   return (
     <DataList>
       <DataListHeader className="grid-cols-[minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem_6rem]">
@@ -37,7 +39,15 @@ export function TimeEntryHistoryList({ days, onAdjust }: TimeEntryHistoryListPro
             {day.entries.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {day.entries.map((entry) => (
-                  <TimeEntryBadge entry={entry} key={entry.id} />
+                  <TimeEntryBadge
+                    entry={entry}
+                    hasPendingAdjustment={adjustments.some(
+                      (adjustment) =>
+                        adjustment.status === 'PENDING' &&
+                        adjustment.targetTimeEntryId === entry.id,
+                    )}
+                    key={entry.id}
+                  />
                 ))}
               </div>
             ) : (

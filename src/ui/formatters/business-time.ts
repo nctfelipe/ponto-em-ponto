@@ -26,6 +26,12 @@ export const formatBusinessShortTime = createDateTimeFormatter('pt-BR', {
   timeZone: BUSINESS_TIME_ZONE,
 });
 
+export const formatBusinessShortDateTime = createDateTimeFormatter('pt-BR', {
+  dateStyle: 'short',
+  timeStyle: 'short',
+  timeZone: BUSINESS_TIME_ZONE,
+});
+
 const formatCalendarDay = createDateTimeFormatter('pt-BR', {
   day: '2-digit',
   month: '2-digit',

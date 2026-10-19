@@ -27,7 +27,10 @@ const timeEntryAdjustmentService = new TimeEntryAdjustmentService(
 export const useSession = createUseSession({ sessionService });
 export const useUserProfile = createUseUserProfile({ profileRepository });
 export const useUsers = createUseUsers({ profileRepository });
-export const useTimeEntryHistory = createUseTimeEntryHistory({ timeEntryService });
+export const useTimeEntryHistory = createUseTimeEntryHistory({
+  adjustmentService: timeEntryAdjustmentService,
+  timeEntryService,
+});
 export const useTimeEntryAdjustment = createUseTimeEntryAdjustment({
   adjustmentService: timeEntryAdjustmentService,
 });

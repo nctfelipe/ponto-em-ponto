@@ -81,6 +81,14 @@ class FakeAdjustmentRepository implements TimeEntryAdjustmentRepository {
       this.adjustments.filter((adjustment) => adjustment.targetTimeEntryId === timeEntryId),
     );
   }
+
+  findByUserAndMonth(userId: string, monthKey: string) {
+    return Promise.resolve(
+      this.adjustments.filter(
+        (adjustment) => adjustment.userId === userId && adjustment.monthKey === monthKey,
+      ),
+    );
+  }
 }
 
 class FakeTimePeriodRepository implements TimePeriodRepository {

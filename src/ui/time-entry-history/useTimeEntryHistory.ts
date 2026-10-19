@@ -4,23 +4,32 @@ import type {
   MonthlyTimeEntryDay,
   TimeEntryService,
 } from '@/application/time-entries/time-entry-service';
+import type { TimeEntryAdjustmentService } from '@/application/time-entry-adjustments/time-entry-adjustment-service';
+import type { TimeEntryAdjustment } from '@/domain/time-entry-adjustment';
 
 interface CreateUseTimeEntryHistoryDependencies {
+  adjustmentService: TimeEntryAdjustmentService;
   timeEntryService: TimeEntryService;
 }
 
 export function createUseTimeEntryHistory({
+  adjustmentService,
   timeEntryService,
 }: CreateUseTimeEntryHistoryDependencies) {
   return function useTimeEntryHistory(userId: string) {
     const [monthKey, setMonthKey] = useState(() => getBusinessDateKeys(new Date()).monthKey);
     const [days, setDays] = useState<MonthlyTimeEntryDay[]>([]);
+    const [adjustments, setAdjustments] = useState<TimeEntryAdjustment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
     const [reloadCount, setReloadCount] = useState(0);
 
     const findMonth = useCallback(
-      () => timeEntryService.findMonth(userId, monthKey, new Date()),
+      () =>
+        Promise.all([
+          timeEntryService.findMonth(userId, monthKey, new Date()),
+          adjustmentService.findMonth(userId, monthKey),
+        ]),
       [monthKey, userId],
     );
 
@@ -31,8 +40,11 @@ export function createUseTimeEntryHistory({
       setHasError(false);
 
       void findMonth()
-        .then((result) => {
-          if (isActive) setDays(result.days);
+        .then(([timeEntries, monthlyAdjustments]) => {
+          if (isActive) {
+            setDays(timeEntries.days);
+            setAdjustments(monthlyAdjustments);
+          }
         })
         .catch(() => {
           if (isActive) setHasError(true);
@@ -52,6 +64,7 @@ export function createUseTimeEntryHistory({
 
     return {
       days,
+      adjustments,
       hasError,
       isLoading,
       load,

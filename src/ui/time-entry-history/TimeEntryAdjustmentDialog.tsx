@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { MonthlyTimeEntryDay } from '@/application/time-entries/time-entry-service';
 import type { TimeEntryAdjustmentCommand } from '@/application/time-entry-adjustments/time-entry-adjustment-service';
 import type { TimeEntry } from '@/domain/time-entry';
+import type { TimeEntryAdjustment } from '@/domain/time-entry-adjustment';
 import { Alert } from '@/ui/components/Alert';
 import { Button } from '@/ui/components/Button';
 import { InputField } from '@/ui/components/InputField';
@@ -10,8 +11,10 @@ import {
   formatBusinessTimeInput,
   parseBusinessDayAndTime,
 } from '@/ui/formatters/business-time';
+import { TimeEntryAdjustmentHistory } from '@/ui/time-entry-history/TimeEntryAdjustmentHistory';
 
 interface TimeEntryAdjustmentDialogProps {
+  adjustments: TimeEntryAdjustment[];
   day: MonthlyTimeEntryDay;
   errorMessage: string | null;
   isSubmitting: boolean;
@@ -36,6 +39,7 @@ function createDraftEntry(entry: TimeEntry): DraftEntry {
 }
 
 export function TimeEntryAdjustmentDialog({
+  adjustments,
   day,
   errorMessage,
   isSubmitting,
@@ -45,6 +49,13 @@ export function TimeEntryAdjustmentDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const nextDraftId = useRef(0);
   const [draftEntries, setDraftEntries] = useState(() => day.entries.map(createDraftEntry));
+  const pendingTargetIds = new Set(
+    adjustments.flatMap((adjustment) =>
+      adjustment.status === 'PENDING' && adjustment.targetTimeEntryId
+        ? [adjustment.targetTimeEntryId]
+        : [],
+    ),
+  );
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -121,7 +132,11 @@ export function TimeEntryAdjustmentDialog({
             key={draft.id}
           >
             <InputField
-              disabled={draft.isRemoved || isSubmitting}
+              disabled={
+                draft.isRemoved ||
+                isSubmitting ||
+                (draft.entry ? pendingTargetIds.has(draft.entry.id) : false)
+              }
               label={draft.entry ? `Batida ${String(index + 1)}` : 'Nova batida'}
               onChange={(event) => {
                 updateDraft(draft.id, (current) => ({ ...current, time: event.target.value }));
@@ -131,7 +146,9 @@ export function TimeEntryAdjustmentDialog({
               value={draft.time}
             />
             <Button
-              disabled={isSubmitting}
+              disabled={
+                isSubmitting || (draft.entry ? pendingTargetIds.has(draft.entry.id) : false)
+              }
               onClick={() => {
                 removeDraft(draft);
               }}
@@ -139,7 +156,13 @@ export function TimeEntryAdjustmentDialog({
               type="button"
               variant={draft.isRemoved ? 'secondary' : 'danger'}
             >
-              {draft.isRemoved ? 'Desfazer' : draft.entry ? 'Remover' : 'Descartar'}
+              {draft.entry && pendingTargetIds.has(draft.entry.id)
+                ? 'Pendente'
+                : draft.isRemoved
+                  ? 'Desfazer'
+                  : draft.entry
+                    ? 'Remover'
+                    : 'Descartar'}
             </Button>
           </div>
         ))}
@@ -156,6 +179,8 @@ export function TimeEntryAdjustmentDialog({
       </Button>
 
       {errorMessage && <Alert variant="error">{errorMessage}</Alert>}
+
+      <TimeEntryAdjustmentHistory adjustments={adjustments} />
 
       <div className="mt-6 grid grid-cols-2 gap-3">
         <Button disabled={isSubmitting} onClick={onCancel} type="button" variant="secondary">

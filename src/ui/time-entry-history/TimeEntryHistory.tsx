@@ -28,6 +28,12 @@ export function TimeEntryHistory({ requestedById, userId }: TimeEntryHistoryProp
     setSelectedDay(null);
   }
 
+  async function submitAdjustments(requests: Parameters<typeof adjustment.submitAll>[0]) {
+    const succeeded = await adjustment.submitAll(requests);
+    if (succeeded) history.load();
+    return succeeded;
+  }
+
   return (
     <>
       <MonthSelector monthKey={history.monthKey} onChange={history.selectMonth} />
@@ -48,16 +54,21 @@ export function TimeEntryHistory({ requestedById, userId }: TimeEntryHistoryProp
       {adjustment.successMessage && <Alert variant="success">{adjustment.successMessage}</Alert>}
 
       {!history.isLoading && !history.hasError && (
-        <TimeEntryHistoryList days={history.days} onAdjust={openAdjustment} />
+        <TimeEntryHistoryList
+          adjustments={history.adjustments}
+          days={history.days}
+          onAdjust={openAdjustment}
+        />
       )}
 
       {selectedDay && (
         <TimeEntryAdjustmentDialog
+          adjustments={history.adjustments.filter((item) => item.dayKey === selectedDay.dayKey)}
           day={selectedDay}
           errorMessage={adjustment.errorMessage}
           isSubmitting={adjustment.isSubmitting}
           onCancel={closeAdjustment}
-          onSubmit={adjustment.submitAll}
+          onSubmit={submitAdjustments}
         />
       )}
     </>

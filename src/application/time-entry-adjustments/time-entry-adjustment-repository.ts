@@ -14,6 +14,7 @@ export interface NewTimeEntryAdjustment {
 export interface TimeEntryAdjustmentRepository {
   createMany(adjustments: NewTimeEntryAdjustment[]): Promise<void>;
   findByTimeEntryId(timeEntryId: string): Promise<TimeEntryAdjustment[]>;
+  findByUserAndMonth(userId: string, monthKey: string): Promise<TimeEntryAdjustment[]>;
 }
 
 export class TimeEntryAdjustmentRepositoryError extends Error {

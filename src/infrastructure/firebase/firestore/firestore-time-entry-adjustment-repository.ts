@@ -4,6 +4,7 @@ import {
   doc,
   getDocs,
   getFirestore,
+  orderBy,
   query,
   serverTimestamp,
   where,
@@ -87,6 +88,27 @@ export class FirestoreTimeEntryAdjustmentRepository implements TimeEntryAdjustme
       );
     } catch (error: unknown) {
       throw new TimeEntryAdjustmentRepositoryError('Unable to read time entry adjustments.', {
+        cause: error,
+      });
+    }
+  }
+
+  async findByUserAndMonth(userId: string, monthKey: string) {
+    try {
+      const snapshot = await getDocs(
+        query(
+          collection(this.firestore, 'timeEntryAdjustments'),
+          where('userId', '==', userId),
+          where('monthKey', '==', monthKey),
+          orderBy('requestedAt'),
+        ),
+      );
+
+      return snapshot.docs.map((adjustment) =>
+        toAdjustment(adjustment.id, adjustment.data() as TimeEntryAdjustmentDocument),
+      );
+    } catch (error: unknown) {
+      throw new TimeEntryAdjustmentRepositoryError('Unable to read monthly adjustment requests.', {
         cause: error,
       });
     }

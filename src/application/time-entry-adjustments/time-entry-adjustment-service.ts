@@ -91,6 +91,10 @@ export class TimeEntryAdjustmentService {
     await this.adjustmentRepository.createMany(adjustments);
   }
 
+  findMonth(userId: string, monthKey: string) {
+    return this.adjustmentRepository.findByUserAndMonth(userId, monthKey);
+  }
+
   private async findTargetEntries(targetIds: string[], userId: string) {
     const entries = await Promise.all(targetIds.map((id) => this.timeEntryRepository.findById(id)));
     const entriesById = new Map<string, TimeEntry>();
