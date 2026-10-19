@@ -2,6 +2,7 @@ import {
   Timestamp,
   collection,
   doc,
+  getDoc,
   getDocs,
   getFirestore,
   orderBy,
@@ -9,6 +10,7 @@ import {
   serverTimestamp,
   where,
   writeBatch,
+  type WriteBatch,
 } from 'firebase/firestore';
 import {
   TimeEntryAdjustmentRepositoryError,
@@ -56,19 +58,76 @@ export class FirestoreTimeEntryAdjustmentRepository implements TimeEntryAdjustme
       const batch = writeBatch(this.firestore);
 
       adjustments.forEach((adjustment) => {
-        const reference = doc(collection(this.firestore, 'timeEntryAdjustments'));
-        batch.set(reference, {
-          ...adjustment,
-          decidedAt: null,
-          decidedById: null,
-          requestedAt: serverTimestamp(),
-          status: 'PENDING',
-        });
+        this.addAuditRecord(batch, adjustment, 'PENDING', null);
       });
 
       await batch.commit();
     } catch (error: unknown) {
       throw new TimeEntryAdjustmentRepositoryError('Unable to create adjustment requests.', {
+        cause: error,
+      });
+    }
+  }
+
+  async applyMany(adjustments: NewTimeEntryAdjustment[], decidedById: string) {
+    try {
+      const batch = writeBatch(this.firestore);
+
+      adjustments.forEach((adjustment) => {
+        this.addAuditRecord(batch, adjustment, 'APPROVED', decidedById);
+
+        this.applyEffectiveAdjustment(batch, adjustment);
+      });
+
+      await batch.commit();
+    } catch (error: unknown) {
+      throw new TimeEntryAdjustmentRepositoryError('Unable to apply administrative adjustments.', {
+        cause: error,
+      });
+    }
+  }
+
+  async approve(adjustment: TimeEntryAdjustment, decidedById: string) {
+    try {
+      const batch = writeBatch(this.firestore);
+      batch.update(doc(this.firestore, 'timeEntryAdjustments', adjustment.id), {
+        decidedAt: serverTimestamp(),
+        decidedById,
+        status: 'APPROVED',
+      });
+      this.applyEffectiveAdjustment(batch, adjustment);
+      await batch.commit();
+    } catch (error: unknown) {
+      throw new TimeEntryAdjustmentRepositoryError('Unable to approve adjustment request.', {
+        cause: error,
+      });
+    }
+  }
+
+  async reject(id: string, decidedById: string) {
+    try {
+      const batch = writeBatch(this.firestore);
+      batch.update(doc(this.firestore, 'timeEntryAdjustments', id), {
+        decidedAt: serverTimestamp(),
+        decidedById,
+        status: 'REJECTED',
+      });
+      await batch.commit();
+    } catch (error: unknown) {
+      throw new TimeEntryAdjustmentRepositoryError('Unable to reject adjustment request.', {
+        cause: error,
+      });
+    }
+  }
+
+  async findById(id: string) {
+    try {
+      const snapshot = await getDoc(doc(this.firestore, 'timeEntryAdjustments', id));
+      return snapshot.exists()
+        ? toAdjustment(snapshot.id, snapshot.data() as TimeEntryAdjustmentDocument)
+        : null;
+    } catch (error: unknown) {
+      throw new TimeEntryAdjustmentRepositoryError('Unable to read adjustment request.', {
         cause: error,
       });
     }
@@ -110,6 +169,57 @@ export class FirestoreTimeEntryAdjustmentRepository implements TimeEntryAdjustme
     } catch (error: unknown) {
       throw new TimeEntryAdjustmentRepositoryError('Unable to read monthly adjustment requests.', {
         cause: error,
+      });
+    }
+  }
+
+  private addAuditRecord(
+    batch: WriteBatch,
+    adjustment: NewTimeEntryAdjustment,
+    status: 'APPROVED' | 'PENDING',
+    decidedById: string | null,
+  ) {
+    const reference = doc(collection(this.firestore, 'timeEntryAdjustments'));
+    batch.set(reference, {
+      ...adjustment,
+      decidedAt: status === 'APPROVED' ? serverTimestamp() : null,
+      decidedById,
+      requestedAt: serverTimestamp(),
+      status,
+    });
+  }
+
+  private applyEffectiveAdjustment(
+    batch: WriteBatch,
+    adjustment: NewTimeEntryAdjustment | TimeEntryAdjustment,
+  ) {
+    if (adjustment.type === 'ADD' && adjustment.proposedRecordedAt) {
+      const reference = doc(collection(this.firestore, 'timeEntries'));
+      batch.set(reference, {
+        dayKey: adjustment.dayKey,
+        monthKey: adjustment.monthKey,
+        recordedAt: adjustment.proposedRecordedAt,
+        status: 'ACTIVE',
+        userId: adjustment.userId,
+      });
+    }
+
+    if (
+      adjustment.type === 'CHANGE' &&
+      adjustment.targetTimeEntryId &&
+      adjustment.proposedRecordedAt
+    ) {
+      batch.update(doc(this.firestore, 'timeEntries', adjustment.targetTimeEntryId), {
+        dayKey: adjustment.dayKey,
+        monthKey: adjustment.monthKey,
+        recordedAt: adjustment.proposedRecordedAt,
+        status: 'ACTIVE',
+      });
+    }
+
+    if (adjustment.type === 'REMOVE' && adjustment.targetTimeEntryId) {
+      batch.update(doc(this.firestore, 'timeEntries', adjustment.targetTimeEntryId), {
+        status: 'REMOVED',
       });
     }
   }

@@ -68,7 +68,7 @@ function AdminTimeEntryHistoryContent({
       {!userProfile.isLoading && !userProfile.hasError && userProfile.profile && (
         <>
           <UserHistoryContext onBack={onBack} profile={userProfile.profile} />
-          <TimeEntryHistory requestedById={requestedById} userId={userId} />
+          <TimeEntryHistory canApplyDirectly requestedById={requestedById} userId={userId} />
         </>
       )}
     </PageContent>

@@ -7,14 +7,28 @@ import { TimeEntryBadge } from '@/ui/time-entry-history/TimeEntryBadge';
 
 interface TimeEntryHistoryListProps {
   adjustments: TimeEntryAdjustment[];
+  canApplyDirectly: boolean;
   days: MonthlyTimeEntryDay[];
   onAdjust: (day: MonthlyTimeEntryDay) => void;
+  onReview: (day: MonthlyTimeEntryDay) => void;
 }
 
-export function TimeEntryHistoryList({ adjustments, days, onAdjust }: TimeEntryHistoryListProps) {
+function countPendingAdjustments(adjustments: TimeEntryAdjustment[], dayKey: string) {
+  return adjustments.filter(
+    (adjustment) => adjustment.dayKey === dayKey && adjustment.status === 'PENDING',
+  ).length;
+}
+
+export function TimeEntryHistoryList({
+  adjustments,
+  canApplyDirectly,
+  days,
+  onAdjust,
+  onReview,
+}: TimeEntryHistoryListProps) {
   return (
     <DataList>
-      <DataListHeader className="grid-cols-[minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem_6rem]">
+      <DataListHeader className="grid-cols-[minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem_13rem]">
         <span>Data</span>
         <span>Batidas</span>
         <span className="text-right">Total</span>
@@ -24,7 +38,7 @@ export function TimeEntryHistoryList({ adjustments, days, onAdjust }: TimeEntryH
       <DataListBody>
         {days.map((day) => (
           <DataListRow
-            className={`md:grid-cols-[minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem_6rem] ${day.isFuture ? 'bg-background opacity-60' : ''}`}
+            className={`md:grid-cols-[minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem_13rem] ${day.isFuture ? 'bg-background opacity-60' : ''}`}
             key={day.dayKey}
           >
             <div className="flex items-center justify-between gap-4 md:block">
@@ -58,7 +72,7 @@ export function TimeEntryHistoryList({ adjustments, days, onAdjust }: TimeEntryH
               {formatWorkedDuration(day.workedMilliseconds)}
             </span>
 
-            <div className="text-right">
+            <div className="flex flex-wrap justify-end gap-2">
               {!day.isFuture && (
                 <Button
                   onClick={() => {
@@ -68,7 +82,22 @@ export function TimeEntryHistoryList({ adjustments, days, onAdjust }: TimeEntryH
                   type="button"
                   variant="secondary"
                 >
-                  Ajustar
+                  {canApplyDirectly ? 'Novo ajuste' : 'Solicitar ajuste'}
+                </Button>
+              )}
+              {!day.isFuture && (
+                <Button
+                  disabled={!adjustments.some((adjustment) => adjustment.dayKey === day.dayKey)}
+                  onClick={() => {
+                    onReview(day);
+                  }}
+                  size="small"
+                  type="button"
+                  variant="secondary"
+                >
+                  {canApplyDirectly && countPendingAdjustments(adjustments, day.dayKey) > 0
+                    ? `Revisar (${String(countPendingAdjustments(adjustments, day.dayKey))})`
+                    : 'Ver solicitações'}
                 </Button>
               )}
             </div>

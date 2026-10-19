@@ -14,10 +14,6 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isActiveUser() {
-      return isActiveProfile(request.auth.uid);
-    }
-
     function isActiveProfile(userId) {
       return isSignedIn()
         && get(/databases/$(database)/documents/profiles/$(userId)).data.status == 'ACTIVE';
@@ -64,7 +60,7 @@ service cloud.firestore {
     }
 
     match /timeEntries/{entryId} {
-      allow create: if isActiveUser()
+      allow create: if isSignedIn()
         && request.resource.data.keys().hasOnly([
           'userId',
           'recordedAt',
@@ -72,15 +68,35 @@ service cloud.firestore {
           'monthKey',
           'status'
         ])
-        && isCurrentUser(request.resource.data.userId)
-        && request.resource.data.recordedAt == request.time
+        && isActiveProfile(request.resource.data.userId)
         && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.recordedAt is timestamp
         && request.resource.data.dayKey is string
-        && request.resource.data.monthKey is string;
+        && request.resource.data.monthKey is string
+        && (
+          isAdmin()
+          || (
+            isCurrentUser(request.resource.data.userId)
+            && request.resource.data.recordedAt == request.time
+          )
+        );
 
       allow get, list: if isCurrentUser(resource.data.userId) || isAdmin();
 
-      allow update, delete: if false;
+      allow update: if isAdmin()
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'recordedAt',
+          'dayKey',
+          'monthKey',
+          'status'
+        ])
+        && request.resource.data.recordedAt is timestamp
+        && request.resource.data.dayKey is string
+        && request.resource.data.monthKey is string
+        && request.resource.data.status in ['ACTIVE', 'REMOVED'];
+
+      allow delete: if false;
     }
 
     match /timeEntryAdjustments/{adjustmentId} {
@@ -102,15 +118,25 @@ service cloud.firestore {
         && request.resource.data.requestedById == request.auth.uid
         && (isCurrentUser(request.resource.data.userId) || isAdmin())
         && isActiveProfile(request.resource.data.userId)
-        && request.resource.data.status == 'PENDING'
         && request.resource.data.dayKey is string
         && request.resource.data.monthKey is string
         && request.resource.data.requestedAt == request.time
-        && request.resource.data.decidedAt == null
-        && request.resource.data.decidedById == null
         && isOpenPeriod(
           request.resource.data.userId,
           request.resource.data.monthKey
+        )
+        && (
+          (
+            request.resource.data.status == 'PENDING'
+            && request.resource.data.decidedAt == null
+            && request.resource.data.decidedById == null
+          )
+          || (
+            isAdmin()
+            && request.resource.data.status == 'APPROVED'
+            && request.resource.data.decidedAt == request.time
+            && request.resource.data.decidedById == request.auth.uid
+          )
         )
         && (
           (
@@ -140,7 +166,19 @@ service cloud.firestore {
         );
 
       allow get, list: if isCurrentUser(resource.data.userId) || isAdmin();
-      allow update, delete: if false;
+      allow update: if isAdmin()
+        && resource.data.status == 'PENDING'
+        && request.resource.data.status in ['APPROVED', 'REJECTED']
+        && request.resource.data.decidedAt == request.time
+        && request.resource.data.decidedById == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'decidedAt',
+          'decidedById'
+        ])
+        && isOpenPeriod(resource.data.userId, resource.data.monthKey);
+
+      allow delete: if false;
     }
 
     match /profiles/{userId}/timePeriods/{monthKey} {

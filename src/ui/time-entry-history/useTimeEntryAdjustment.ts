@@ -3,6 +3,7 @@ import {
   ClosedTimePeriodError,
   TimeEntryAdjustmentConflictError,
   TimeEntryAdjustmentLimitError,
+  TimeEntryAdjustmentNotPendingError,
   type TimeEntryAdjustmentCommand,
   type TimeEntryAdjustmentService,
   TimeEntryNotAdjustableError,
@@ -28,6 +29,9 @@ function getErrorMessage(error: unknown) {
   if (error instanceof TimeEntryNotAdjustableError) {
     return 'Esta batida não pode mais ser ajustada.';
   }
+  if (error instanceof TimeEntryAdjustmentNotPendingError) {
+    return 'Esta solicitação já foi analisada.';
+  }
   return 'Não foi possível enviar a solicitação.';
 }
 
@@ -39,22 +43,51 @@ export function createUseTimeEntryAdjustment({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    async function submitAll(requests: TimeEntryAdjustmentCommand[]) {
+    async function execute(requests: TimeEntryAdjustmentCommand[], applyDirectly: boolean) {
       setErrorMessage(null);
       setSuccessMessage(null);
       setIsSubmitting(true);
 
       try {
-        await adjustmentService.submitAdjustments({
+        const input = {
           commands: requests,
           requestedById,
           userId,
-        });
-        setSuccessMessage(
-          requests.length === 1
-            ? 'Solicitação enviada para análise.'
-            : 'Solicitações enviadas para análise.',
-        );
+        };
+
+        if (applyDirectly) {
+          await adjustmentService.applyAdjustments(input);
+          setSuccessMessage('Ajustes aplicados com sucesso.');
+        } else {
+          await adjustmentService.submitAdjustments(input);
+          setSuccessMessage(
+            requests.length === 1
+              ? 'Solicitação enviada para análise.'
+              : 'Solicitações enviadas para análise.',
+          );
+        }
+        return true;
+      } catch (error: unknown) {
+        setErrorMessage(getErrorMessage(error));
+        return false;
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+
+    async function decide(adjustmentId: string, decision: 'APPROVE' | 'REJECT') {
+      setErrorMessage(null);
+      setSuccessMessage(null);
+      setIsSubmitting(true);
+
+      try {
+        if (decision === 'APPROVE') {
+          await adjustmentService.approve(adjustmentId, requestedById);
+          setSuccessMessage('Solicitação aprovada e aplicada.');
+        } else {
+          await adjustmentService.reject(adjustmentId, requestedById);
+          setSuccessMessage('Solicitação rejeitada.');
+        }
         return true;
       } catch (error: unknown) {
         setErrorMessage(getErrorMessage(error));
@@ -67,11 +100,14 @@ export function createUseTimeEntryAdjustment({
     return {
       errorMessage,
       isSubmitting,
-      submitAll,
+      applyAll: (requests: TimeEntryAdjustmentCommand[]) => execute(requests, true),
+      approve: (adjustmentId: string) => decide(adjustmentId, 'APPROVE'),
+      submitAll: (requests: TimeEntryAdjustmentCommand[]) => execute(requests, false),
       resetFeedback: () => {
         setErrorMessage(null);
         setSuccessMessage(null);
       },
+      reject: (adjustmentId: string) => decide(adjustmentId, 'REJECT'),
       successMessage,
     };
   };

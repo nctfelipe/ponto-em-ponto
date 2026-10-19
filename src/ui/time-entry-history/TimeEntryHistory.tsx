@@ -5,33 +5,55 @@ import { Button } from '@/ui/components/Button';
 import { FeedbackMessage } from '@/ui/components/FeedbackMessage';
 import { useTimeEntryAdjustment, useTimeEntryHistory } from '@/ui/composition';
 import { TimeEntryAdjustmentDialog } from '@/ui/time-entry-history/TimeEntryAdjustmentDialog';
+import { TimeEntryAdjustmentReviewDialog } from '@/ui/time-entry-history/TimeEntryAdjustmentReviewDialog';
 import { MonthSelector } from '@/ui/time-entry-history/MonthSelector';
 import { TimeEntryHistoryList } from '@/ui/time-entry-history/TimeEntryHistoryList';
 
 interface TimeEntryHistoryProps {
+  canApplyDirectly: boolean;
   requestedById: string;
   userId: string;
 }
 
-export function TimeEntryHistory({ requestedById, userId }: TimeEntryHistoryProps) {
+type OpenDialog = { day: MonthlyTimeEntryDay; type: 'ADJUST' | 'REVIEW' } | null;
+
+export function TimeEntryHistory({
+  canApplyDirectly,
+  requestedById,
+  userId,
+}: TimeEntryHistoryProps) {
   const history = useTimeEntryHistory(userId);
   const adjustment = useTimeEntryAdjustment({ requestedById, userId });
-  const [selectedDay, setSelectedDay] = useState<MonthlyTimeEntryDay | null>(null);
+  const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
 
   function openAdjustment(day: MonthlyTimeEntryDay) {
     adjustment.resetFeedback();
-    setSelectedDay(day);
+    setOpenDialog({ day, type: 'ADJUST' });
   }
 
-  function closeAdjustment() {
+  function closeDialog() {
     if (adjustment.isSubmitting) return;
-    setSelectedDay(null);
+    setOpenDialog(null);
   }
 
   async function submitAdjustments(requests: Parameters<typeof adjustment.submitAll>[0]) {
-    const succeeded = await adjustment.submitAll(requests);
+    const succeeded = canApplyDirectly
+      ? await adjustment.applyAll(requests)
+      : await adjustment.submitAll(requests);
     if (succeeded) history.load();
     return succeeded;
+  }
+
+  async function decideAdjustment(adjustmentId: string, decision: 'APPROVE' | 'REJECT') {
+    const succeeded =
+      decision === 'APPROVE'
+        ? await adjustment.approve(adjustmentId)
+        : await adjustment.reject(adjustmentId);
+
+    if (succeeded) {
+      setOpenDialog(null);
+      history.load();
+    }
   }
 
   return (
@@ -56,19 +78,49 @@ export function TimeEntryHistory({ requestedById, userId }: TimeEntryHistoryProp
       {!history.isLoading && !history.hasError && (
         <TimeEntryHistoryList
           adjustments={history.adjustments}
+          canApplyDirectly={canApplyDirectly}
           days={history.days}
           onAdjust={openAdjustment}
+          onReview={(day) => {
+            adjustment.resetFeedback();
+            setOpenDialog({ day, type: 'REVIEW' });
+          }}
         />
       )}
 
-      {selectedDay && (
+      {openDialog?.type === 'ADJUST' && (
         <TimeEntryAdjustmentDialog
-          adjustments={history.adjustments.filter((item) => item.dayKey === selectedDay.dayKey)}
-          day={selectedDay}
+          adjustments={history.adjustments.filter((item) => item.dayKey === openDialog.day.dayKey)}
+          day={openDialog.day}
+          errorMessage={adjustment.errorMessage}
+          isDirectAdjustment={canApplyDirectly}
+          isSubmitting={adjustment.isSubmitting}
+          onCancel={closeDialog}
+          onSubmit={submitAdjustments}
+        />
+      )}
+
+      {openDialog?.type === 'REVIEW' && (
+        <TimeEntryAdjustmentReviewDialog
+          adjustments={history.adjustments.filter((item) => item.dayKey === openDialog.day.dayKey)}
+          dayKey={openDialog.day.dayKey}
           errorMessage={adjustment.errorMessage}
           isSubmitting={adjustment.isSubmitting}
-          onCancel={closeAdjustment}
-          onSubmit={submitAdjustments}
+          onApprove={
+            canApplyDirectly
+              ? (adjustmentId) => {
+                  void decideAdjustment(adjustmentId, 'APPROVE');
+                }
+              : undefined
+          }
+          onClose={closeDialog}
+          onReject={
+            canApplyDirectly
+              ? (adjustmentId) => {
+                  void decideAdjustment(adjustmentId, 'REJECT');
+                }
+              : undefined
+          }
         />
       )}
     </>

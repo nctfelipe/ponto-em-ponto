@@ -64,7 +64,13 @@ function App() {
       <Route element={<AuthenticatedLayout identity={identity} onSignOut={session.signOut} />}>
         <Route element={<HomePage userId={identity.id} />} index />
         <Route
-          element={<TimeEntryHistoryPage requestedById={identity.id} userId={identity.id} />}
+          element={
+            <TimeEntryHistoryPage
+              canApplyDirectly={identity.isAdmin}
+              requestedById={identity.id}
+              userId={identity.id}
+            />
+          }
           path="time-entries"
         />
         {identity.isAdmin && (

@@ -11,12 +11,12 @@ import {
   formatBusinessTimeInput,
   parseBusinessDayAndTime,
 } from '@/ui/formatters/business-time';
-import { TimeEntryAdjustmentHistory } from '@/ui/time-entry-history/TimeEntryAdjustmentHistory';
 
 interface TimeEntryAdjustmentDialogProps {
   adjustments: TimeEntryAdjustment[];
   day: MonthlyTimeEntryDay;
   errorMessage: string | null;
+  isDirectAdjustment: boolean;
   isSubmitting: boolean;
   onCancel: () => void;
   onSubmit: (requests: TimeEntryAdjustmentCommand[]) => Promise<boolean>;
@@ -42,6 +42,7 @@ export function TimeEntryAdjustmentDialog({
   adjustments,
   day,
   errorMessage,
+  isDirectAdjustment,
   isSubmitting,
   onCancel,
   onSubmit,
@@ -118,7 +119,9 @@ export function TimeEntryAdjustmentDialog({
         Ajustes de {formatBusinessDayKey(day.dayKey)}
       </h2>
       <p className="mt-2 text-sm text-content-secondary">
-        Revise as alterações antes de enviar as solicitações.
+        {isDirectAdjustment
+          ? 'Revise as alterações antes de aplicá-las.'
+          : 'Revise as alterações antes de enviar as solicitações.'}
       </p>
 
       <div className="mt-5 space-y-3">
@@ -180,8 +183,6 @@ export function TimeEntryAdjustmentDialog({
 
       {errorMessage && <Alert variant="error">{errorMessage}</Alert>}
 
-      <TimeEntryAdjustmentHistory adjustments={adjustments} />
-
       <div className="mt-6 grid grid-cols-2 gap-3">
         <Button disabled={isSubmitting} onClick={onCancel} type="button" variant="secondary">
           Cancelar
@@ -191,7 +192,11 @@ export function TimeEntryAdjustmentDialog({
           onClick={() => void submit()}
           type="button"
         >
-          {isSubmitting ? 'Enviando...' : 'Confirmar ajustes'}
+          {isSubmitting
+            ? 'Salvando...'
+            : isDirectAdjustment
+              ? 'Aplicar ajustes'
+              : 'Enviar solicitações'}
         </Button>
       </div>
     </dialog>

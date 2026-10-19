@@ -48,6 +48,13 @@ export class TimeEntryNotAdjustableError extends Error {
   }
 }
 
+export class TimeEntryAdjustmentNotPendingError extends Error {
+  constructor() {
+    super('Time entry adjustment is no longer pending.');
+    this.name = 'TimeEntryAdjustmentNotPendingError';
+  }
+}
+
 function hasPendingAdjustment(adjustments: TimeEntryAdjustment[]) {
   return adjustments.some((adjustment) => adjustment.status === 'PENDING');
 }
@@ -72,7 +79,61 @@ export class TimeEntryAdjustmentService {
   }
 
   async submitAdjustments(input: SubmitTimeEntryAdjustmentsInput) {
-    if (input.commands.length === 0) return;
+    const adjustments = await this.prepareAdjustments(input);
+    if (adjustments.length > 0) await this.adjustmentRepository.createMany(adjustments);
+  }
+
+  async applyAdjustments(input: SubmitTimeEntryAdjustmentsInput) {
+    const adjustments = await this.prepareAdjustments(input);
+    if (adjustments.length > 0) {
+      await this.adjustmentRepository.applyMany(adjustments, input.requestedById);
+    }
+  }
+
+  findMonth(userId: string, monthKey: string) {
+    return this.adjustmentRepository.findByUserAndMonth(userId, monthKey);
+  }
+
+  async approve(adjustmentId: string, decidedById: string) {
+    const adjustment = await this.findPendingAdjustment(adjustmentId);
+    await this.ensureOpenPeriods(adjustment.userId, [adjustment]);
+
+    if (adjustment.type === 'ADD') {
+      const entries = await this.timeEntryRepository.findByUserAndDay(
+        adjustment.userId,
+        adjustment.dayKey,
+      );
+      if (entries.filter(({ status }) => status === 'ACTIVE').length >= MAX_DAILY_TIME_ENTRIES) {
+        throw new TimeEntryAdjustmentLimitError();
+      }
+    } else {
+      const entry = adjustment.targetTimeEntryId
+        ? await this.timeEntryRepository.findById(adjustment.targetTimeEntryId)
+        : null;
+      if (entry?.userId !== adjustment.userId || entry.status === 'REMOVED') {
+        throw new TimeEntryNotAdjustableError();
+      }
+    }
+
+    await this.adjustmentRepository.approve(adjustment, decidedById);
+  }
+
+  async reject(adjustmentId: string, decidedById: string) {
+    const adjustment = await this.findPendingAdjustment(adjustmentId);
+    await this.ensureOpenPeriods(adjustment.userId, [adjustment]);
+    await this.adjustmentRepository.reject(adjustmentId, decidedById);
+  }
+
+  private async findPendingAdjustment(adjustmentId: string) {
+    const adjustment = await this.adjustmentRepository.findById(adjustmentId);
+    if (adjustment?.status !== 'PENDING') {
+      throw new TimeEntryAdjustmentNotPendingError();
+    }
+    return adjustment;
+  }
+
+  private async prepareAdjustments(input: SubmitTimeEntryAdjustmentsInput) {
+    if (input.commands.length === 0) return [];
 
     const targetIds = getTargetIds(input.commands);
     if (new Set(targetIds).size !== targetIds.length) {
@@ -88,11 +149,7 @@ export class TimeEntryAdjustmentService {
 
     await this.ensureOpenPeriods(input.userId, adjustments);
     await this.ensureDailyLimits(input.userId, adjustments);
-    await this.adjustmentRepository.createMany(adjustments);
-  }
-
-  findMonth(userId: string, monthKey: string) {
-    return this.adjustmentRepository.findByUserAndMonth(userId, monthKey);
+    return adjustments;
   }
 
   private async findTargetEntries(targetIds: string[], userId: string) {

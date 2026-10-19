@@ -68,12 +68,32 @@ class FakeTimeEntryRepository implements TimeEntryRepository {
 }
 
 class FakeAdjustmentRepository implements TimeEntryAdjustmentRepository {
+  readonly applyInputs: { adjustments: NewTimeEntryAdjustment[]; decidedById: string }[] = [];
+  readonly approveInputs: { adjustment: TimeEntryAdjustment; decidedById: string }[] = [];
   adjustments: TimeEntryAdjustment[] = [];
   readonly createInputs: NewTimeEntryAdjustment[][] = [];
 
   createMany(adjustments: NewTimeEntryAdjustment[]) {
     this.createInputs.push(adjustments);
     return Promise.resolve();
+  }
+
+  applyMany(adjustments: NewTimeEntryAdjustment[], decidedById: string) {
+    this.applyInputs.push({ adjustments, decidedById });
+    return Promise.resolve();
+  }
+
+  approve(adjustment: TimeEntryAdjustment, decidedById: string) {
+    this.approveInputs.push({ adjustment, decidedById });
+    return Promise.resolve();
+  }
+
+  reject() {
+    return Promise.resolve();
+  }
+
+  findById(id: string) {
+    return Promise.resolve(this.adjustments.find((adjustment) => adjustment.id === id) ?? null);
   }
 
   findByTimeEntryId(timeEntryId: string) {
@@ -155,6 +175,46 @@ describe('TimeEntryAdjustmentService', () => {
           userId: 'user-1',
         },
       ],
+    ]);
+  });
+
+  it('applies an administrative batch with its decision author', async () => {
+    const { adjustmentRepository, service } = createService();
+
+    await service.applyAdjustments({
+      commands: [{ timeEntryId: originalEntry.id, type: 'REMOVE' }],
+      requestedById: 'admin-1',
+      userId: 'user-1',
+    });
+
+    expect(adjustmentRepository.applyInputs).toEqual([
+      {
+        adjustments: [
+          {
+            currentRecordedAt: originalEntry.recordedAt,
+            dayKey: originalEntry.dayKey,
+            monthKey: originalEntry.monthKey,
+            proposedRecordedAt: null,
+            requestedById: 'admin-1',
+            targetTimeEntryId: originalEntry.id,
+            type: 'REMOVE',
+            userId: 'user-1',
+          },
+        ],
+        decidedById: 'admin-1',
+      },
+    ]);
+  });
+
+  it('approves a pending request and delegates its effective application', async () => {
+    const { adjustmentRepository, service } = createService();
+    const pendingAdjustment = createAdjustment();
+    adjustmentRepository.adjustments = [pendingAdjustment];
+
+    await service.approve(pendingAdjustment.id, 'admin-1');
+
+    expect(adjustmentRepository.approveInputs).toEqual([
+      { adjustment: pendingAdjustment, decidedById: 'admin-1' },
     ]);
   });
 

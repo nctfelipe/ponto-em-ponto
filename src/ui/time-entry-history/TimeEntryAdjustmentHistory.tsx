@@ -1,5 +1,6 @@
 import type { TimeEntryAdjustment } from '@/domain/time-entry-adjustment';
 import { Badge } from '@/ui/components/Badge';
+import { Button } from '@/ui/components/Button';
 import {
   formatBusinessShortDateTime,
   formatBusinessShortTime,
@@ -7,6 +8,9 @@ import {
 
 interface TimeEntryAdjustmentHistoryProps {
   adjustments: TimeEntryAdjustment[];
+  isSubmitting?: boolean;
+  onApprove?: ((adjustmentId: string) => void) | undefined;
+  onReject?: ((adjustmentId: string) => void) | undefined;
 }
 
 const statusPresentation = {
@@ -35,12 +39,17 @@ function describeAdjustment(adjustment: TimeEntryAdjustment) {
   return 'Solicitação de ajuste';
 }
 
-export function TimeEntryAdjustmentHistory({ adjustments }: TimeEntryAdjustmentHistoryProps) {
+export function TimeEntryAdjustmentHistory({
+  adjustments,
+  isSubmitting = false,
+  onApprove,
+  onReject,
+}: TimeEntryAdjustmentHistoryProps) {
   if (adjustments.length === 0) return null;
 
   return (
     <section className="mt-6 border-t border-border pt-5">
-      <h3 className="font-medium text-content">Histórico de solicitações</h3>
+      <h3 className="font-medium text-content">Histórico de ajustes</h3>
       <ul className="mt-3 space-y-3">
         {adjustments.map((adjustment) => {
           const status = statusPresentation[adjustment.status];
@@ -67,6 +76,31 @@ export function TimeEntryAdjustmentHistory({ adjustments }: TimeEntryAdjustmentH
                 )}
               </div>
               <Badge variant={status.variant}>{status.label}</Badge>
+              {adjustment.status === 'PENDING' && onApprove && onReject && (
+                <div className="flex gap-2">
+                  <Button
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      onReject(adjustment.id);
+                    }}
+                    size="small"
+                    type="button"
+                    variant="secondary"
+                  >
+                    Rejeitar
+                  </Button>
+                  <Button
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      onApprove(adjustment.id);
+                    }}
+                    size="small"
+                    type="button"
+                  >
+                    Aprovar
+                  </Button>
+                </div>
+              )}
             </li>
           );
         })}
