@@ -5,6 +5,7 @@ import {
   TimeEntryAdjustmentLimitError,
   TimeEntryAdjustmentNotPendingError,
   type TimeEntryAdjustmentCommand,
+  type TimeEntryAdjustmentDecisionCommand,
   type TimeEntryAdjustmentService,
   TimeEntryNotAdjustableError,
 } from '@/application/time-entry-adjustments/time-entry-adjustment-service';
@@ -75,19 +76,14 @@ export function createUseTimeEntryAdjustment({
       }
     }
 
-    async function decide(adjustmentId: string, decision: 'APPROVE' | 'REJECT') {
+    async function decideAll(decisions: TimeEntryAdjustmentDecisionCommand[]) {
       setErrorMessage(null);
       setSuccessMessage(null);
       setIsSubmitting(true);
 
       try {
-        if (decision === 'APPROVE') {
-          await adjustmentService.approve(adjustmentId, requestedById);
-          setSuccessMessage('Solicitação aprovada e aplicada.');
-        } else {
-          await adjustmentService.reject(adjustmentId, requestedById);
-          setSuccessMessage('Solicitação rejeitada.');
-        }
+        await adjustmentService.decideAdjustments({ decidedById: requestedById, decisions });
+        setSuccessMessage('Decisões aplicadas com sucesso.');
         return true;
       } catch (error: unknown) {
         setErrorMessage(getErrorMessage(error));
@@ -101,13 +97,12 @@ export function createUseTimeEntryAdjustment({
       errorMessage,
       isSubmitting,
       applyAll: (requests: TimeEntryAdjustmentCommand[]) => execute(requests, true),
-      approve: (adjustmentId: string) => decide(adjustmentId, 'APPROVE'),
+      decideAll,
       submitAll: (requests: TimeEntryAdjustmentCommand[]) => execute(requests, false),
       resetFeedback: () => {
         setErrorMessage(null);
         setSuccessMessage(null);
       },
-      reject: (adjustmentId: string) => decide(adjustmentId, 'REJECT'),
       successMessage,
     };
   };

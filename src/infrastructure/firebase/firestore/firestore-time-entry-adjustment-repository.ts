@@ -15,6 +15,7 @@ import {
 import {
   TimeEntryAdjustmentRepositoryError,
   type NewTimeEntryAdjustment,
+  type TimeEntryAdjustmentDecision,
   type TimeEntryAdjustmentRepository,
 } from '@/application/time-entry-adjustments/time-entry-adjustment-repository';
 import type {
@@ -87,34 +88,22 @@ export class FirestoreTimeEntryAdjustmentRepository implements TimeEntryAdjustme
     }
   }
 
-  async approve(adjustment: TimeEntryAdjustment, decidedById: string) {
+  async decideMany(decisions: TimeEntryAdjustmentDecision[], decidedById: string) {
     try {
       const batch = writeBatch(this.firestore);
-      batch.update(doc(this.firestore, 'timeEntryAdjustments', adjustment.id), {
-        decidedAt: serverTimestamp(),
-        decidedById,
-        status: 'APPROVED',
-      });
-      this.applyEffectiveAdjustment(batch, adjustment);
-      await batch.commit();
-    } catch (error: unknown) {
-      throw new TimeEntryAdjustmentRepositoryError('Unable to approve adjustment request.', {
-        cause: error,
-      });
-    }
-  }
 
-  async reject(id: string, decidedById: string) {
-    try {
-      const batch = writeBatch(this.firestore);
-      batch.update(doc(this.firestore, 'timeEntryAdjustments', id), {
-        decidedAt: serverTimestamp(),
-        decidedById,
-        status: 'REJECTED',
+      decisions.forEach(({ adjustment, status }) => {
+        batch.update(doc(this.firestore, 'timeEntryAdjustments', adjustment.id), {
+          decidedAt: serverTimestamp(),
+          decidedById,
+          status,
+        });
+        if (status === 'APPROVED') this.applyEffectiveAdjustment(batch, adjustment);
       });
+
       await batch.commit();
     } catch (error: unknown) {
-      throw new TimeEntryAdjustmentRepositoryError('Unable to reject adjustment request.', {
+      throw new TimeEntryAdjustmentRepositoryError('Unable to decide adjustment requests.', {
         cause: error,
       });
     }

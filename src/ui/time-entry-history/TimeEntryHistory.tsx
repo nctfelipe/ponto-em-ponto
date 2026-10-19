@@ -44,16 +44,10 @@ export function TimeEntryHistory({
     return succeeded;
   }
 
-  async function decideAdjustment(adjustmentId: string, decision: 'APPROVE' | 'REJECT') {
-    const succeeded =
-      decision === 'APPROVE'
-        ? await adjustment.approve(adjustmentId)
-        : await adjustment.reject(adjustmentId);
-
-    if (succeeded) {
-      setOpenDialog(null);
-      history.load();
-    }
+  async function decideAdjustments(decisions: Parameters<typeof adjustment.decideAll>[0]) {
+    const succeeded = await adjustment.decideAll(decisions);
+    if (succeeded) history.load();
+    return succeeded;
   }
 
   return (
@@ -103,24 +97,12 @@ export function TimeEntryHistory({
       {openDialog?.type === 'REVIEW' && (
         <TimeEntryAdjustmentReviewDialog
           adjustments={history.adjustments.filter((item) => item.dayKey === openDialog.day.dayKey)}
+          canDecide={canApplyDirectly}
           dayKey={openDialog.day.dayKey}
           errorMessage={adjustment.errorMessage}
           isSubmitting={adjustment.isSubmitting}
-          onApprove={
-            canApplyDirectly
-              ? (adjustmentId) => {
-                  void decideAdjustment(adjustmentId, 'APPROVE');
-                }
-              : undefined
-          }
           onClose={closeDialog}
-          onReject={
-            canApplyDirectly
-              ? (adjustmentId) => {
-                  void decideAdjustment(adjustmentId, 'REJECT');
-                }
-              : undefined
-          }
+          onSubmit={decideAdjustments}
         />
       )}
     </>

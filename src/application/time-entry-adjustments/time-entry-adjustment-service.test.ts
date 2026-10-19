@@ -9,6 +9,7 @@ import {
 } from '@/application/time-entry-adjustments/time-entry-adjustment-service';
 import type {
   NewTimeEntryAdjustment,
+  TimeEntryAdjustmentDecision,
   TimeEntryAdjustmentRepository,
 } from '@/application/time-entry-adjustments/time-entry-adjustment-repository';
 import type { TimePeriodRepository } from '@/application/time-periods/time-period-repository';
@@ -69,9 +70,12 @@ class FakeTimeEntryRepository implements TimeEntryRepository {
 
 class FakeAdjustmentRepository implements TimeEntryAdjustmentRepository {
   readonly applyInputs: { adjustments: NewTimeEntryAdjustment[]; decidedById: string }[] = [];
-  readonly approveInputs: { adjustment: TimeEntryAdjustment; decidedById: string }[] = [];
   adjustments: TimeEntryAdjustment[] = [];
   readonly createInputs: NewTimeEntryAdjustment[][] = [];
+  readonly decisionInputs: {
+    decisions: TimeEntryAdjustmentDecision[];
+    decidedById: string;
+  }[] = [];
 
   createMany(adjustments: NewTimeEntryAdjustment[]) {
     this.createInputs.push(adjustments);
@@ -83,12 +87,8 @@ class FakeAdjustmentRepository implements TimeEntryAdjustmentRepository {
     return Promise.resolve();
   }
 
-  approve(adjustment: TimeEntryAdjustment, decidedById: string) {
-    this.approveInputs.push({ adjustment, decidedById });
-    return Promise.resolve();
-  }
-
-  reject() {
+  decideMany(decisions: TimeEntryAdjustmentDecision[], decidedById: string) {
+    this.decisionInputs.push({ decisions, decidedById });
     return Promise.resolve();
   }
 
@@ -206,16 +206,64 @@ describe('TimeEntryAdjustmentService', () => {
     ]);
   });
 
-  it('approves a pending request and delegates its effective application', async () => {
+  it('applies reviewed decisions as a single batch', async () => {
     const { adjustmentRepository, service } = createService();
-    const pendingAdjustment = createAdjustment();
-    adjustmentRepository.adjustments = [pendingAdjustment];
+    const approvedAdjustment = createAdjustment();
+    const rejectedAdjustment = createAdjustment({ id: 'adjustment-2', type: 'ADD' });
+    adjustmentRepository.adjustments = [approvedAdjustment, rejectedAdjustment];
 
-    await service.approve(pendingAdjustment.id, 'admin-1');
+    await service.decideAdjustments({
+      decidedById: 'admin-1',
+      decisions: [
+        { adjustmentId: approvedAdjustment.id, decision: 'APPROVE' },
+        { adjustmentId: rejectedAdjustment.id, decision: 'REJECT' },
+      ],
+    });
 
-    expect(adjustmentRepository.approveInputs).toEqual([
-      { adjustment: pendingAdjustment, decidedById: 'admin-1' },
+    expect(adjustmentRepository.decisionInputs).toEqual([
+      {
+        decidedById: 'admin-1',
+        decisions: [
+          { adjustment: approvedAdjustment, status: 'APPROVED' },
+          { adjustment: rejectedAdjustment, status: 'REJECTED' },
+        ],
+      },
     ]);
+  });
+
+  it('rejects the whole review when approved additions exceed the daily limit', async () => {
+    const { adjustmentRepository, service, timeEntryRepository } = createService();
+    timeEntryRepository.entries = Array.from({ length: 7 }, (_, index) => ({
+      ...originalEntry,
+      id: `entry-${String(index)}`,
+    }));
+    adjustmentRepository.adjustments = [
+      createAdjustment({
+        currentRecordedAt: null,
+        id: 'adjustment-add-1',
+        proposedRecordedAt: new Date('2026-09-10T15:00:00.000Z'),
+        targetTimeEntryId: null,
+        type: 'ADD',
+      }),
+      createAdjustment({
+        currentRecordedAt: null,
+        id: 'adjustment-add-2',
+        proposedRecordedAt: new Date('2026-09-10T18:00:00.000Z'),
+        targetTimeEntryId: null,
+        type: 'ADD',
+      }),
+    ];
+
+    await expect(
+      service.decideAdjustments({
+        decidedById: 'admin-1',
+        decisions: adjustmentRepository.adjustments.map(({ id }) => ({
+          adjustmentId: id,
+          decision: 'APPROVE',
+        })),
+      }),
+    ).rejects.toBeInstanceOf(TimeEntryAdjustmentLimitError);
+    expect(adjustmentRepository.decisionInputs).toHaveLength(0);
   });
 
   it('prevents a second pending request for the same time entry', async () => {

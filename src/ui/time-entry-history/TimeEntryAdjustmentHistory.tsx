@@ -8,9 +8,10 @@ import {
 
 interface TimeEntryAdjustmentHistoryProps {
   adjustments: TimeEntryAdjustment[];
+  decisions?: Record<string, 'APPROVE' | 'REJECT' | undefined>;
   isSubmitting?: boolean;
-  onApprove?: ((adjustmentId: string) => void) | undefined;
-  onReject?: ((adjustmentId: string) => void) | undefined;
+  onDecision?:
+    ((adjustmentId: string, decision: 'APPROVE' | 'REJECT' | undefined) => void) | undefined;
 }
 
 const statusPresentation = {
@@ -41,9 +42,9 @@ function describeAdjustment(adjustment: TimeEntryAdjustment) {
 
 export function TimeEntryAdjustmentHistory({
   adjustments,
+  decisions = {},
   isSubmitting = false,
-  onApprove,
-  onReject,
+  onDecision,
 }: TimeEntryAdjustmentHistoryProps) {
   if (adjustments.length === 0) return null;
 
@@ -76,26 +77,33 @@ export function TimeEntryAdjustmentHistory({
                 )}
               </div>
               <Badge variant={status.variant}>{status.label}</Badge>
-              {adjustment.status === 'PENDING' && onApprove && onReject && (
+              {adjustment.status === 'PENDING' && onDecision && (
                 <div className="flex gap-2">
                   <Button
                     disabled={isSubmitting}
                     onClick={() => {
-                      onReject(adjustment.id);
+                      onDecision(
+                        adjustment.id,
+                        decisions[adjustment.id] === 'REJECT' ? undefined : 'REJECT',
+                      );
                     }}
                     size="small"
                     type="button"
-                    variant="secondary"
+                    variant={decisions[adjustment.id] === 'REJECT' ? 'danger' : 'secondary'}
                   >
                     Rejeitar
                   </Button>
                   <Button
                     disabled={isSubmitting}
                     onClick={() => {
-                      onApprove(adjustment.id);
+                      onDecision(
+                        adjustment.id,
+                        decisions[adjustment.id] === 'APPROVE' ? undefined : 'APPROVE',
+                      );
                     }}
                     size="small"
                     type="button"
+                    variant={decisions[adjustment.id] === 'APPROVE' ? 'primary' : 'secondary'}
                   >
                     Aprovar
                   </Button>

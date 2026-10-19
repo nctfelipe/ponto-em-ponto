@@ -11,14 +11,18 @@ export interface NewTimeEntryAdjustment {
   monthKey: string;
 }
 
+export interface TimeEntryAdjustmentDecision {
+  adjustment: TimeEntryAdjustment;
+  status: 'APPROVED' | 'REJECTED';
+}
+
 export interface TimeEntryAdjustmentRepository {
   applyMany(adjustments: NewTimeEntryAdjustment[], decidedById: string): Promise<void>;
-  approve(adjustment: TimeEntryAdjustment, decidedById: string): Promise<void>;
   createMany(adjustments: NewTimeEntryAdjustment[]): Promise<void>;
+  decideMany(decisions: TimeEntryAdjustmentDecision[], decidedById: string): Promise<void>;
   findById(id: string): Promise<TimeEntryAdjustment | null>;
   findByTimeEntryId(timeEntryId: string): Promise<TimeEntryAdjustment[]>;
   findByUserAndMonth(userId: string, monthKey: string): Promise<TimeEntryAdjustment[]>;
-  reject(id: string, decidedById: string): Promise<void>;
 }
 
 export class TimeEntryAdjustmentRepositoryError extends Error {

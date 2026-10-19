@@ -3,6 +3,7 @@ import type { TimeEntryRepository } from '@/application/time-entries/time-entry-
 import { MAX_DAILY_TIME_ENTRIES } from '@/application/time-entries/time-entry-service';
 import type {
   NewTimeEntryAdjustment,
+  TimeEntryAdjustmentDecision,
   TimeEntryAdjustmentRepository,
 } from '@/application/time-entry-adjustments/time-entry-adjustment-repository';
 import type { TimePeriodRepository } from '@/application/time-periods/time-period-repository';
@@ -18,6 +19,16 @@ export interface SubmitTimeEntryAdjustmentsInput {
   commands: TimeEntryAdjustmentCommand[];
   requestedById: string;
   userId: string;
+}
+
+export interface DecideTimeEntryAdjustmentsInput {
+  decidedById: string;
+  decisions: TimeEntryAdjustmentDecisionCommand[];
+}
+
+export interface TimeEntryAdjustmentDecisionCommand {
+  adjustmentId: string;
+  decision: 'APPROVE' | 'REJECT';
 }
 
 export class ClosedTimePeriodError extends Error {
@@ -94,42 +105,45 @@ export class TimeEntryAdjustmentService {
     return this.adjustmentRepository.findByUserAndMonth(userId, monthKey);
   }
 
-  async approve(adjustmentId: string, decidedById: string) {
-    const adjustment = await this.findPendingAdjustment(adjustmentId);
-    await this.ensureOpenPeriods(adjustment.userId, [adjustment]);
+  async decideAdjustments(input: DecideTimeEntryAdjustmentsInput) {
+    if (input.decisions.length === 0) return;
 
-    if (adjustment.type === 'ADD') {
-      const entries = await this.timeEntryRepository.findByUserAndDay(
-        adjustment.userId,
-        adjustment.dayKey,
-      );
-      if (entries.filter(({ status }) => status === 'ACTIVE').length >= MAX_DAILY_TIME_ENTRIES) {
-        throw new TimeEntryAdjustmentLimitError();
-      }
-    } else {
-      const entry = adjustment.targetTimeEntryId
-        ? await this.timeEntryRepository.findById(adjustment.targetTimeEntryId)
-        : null;
-      if (entry?.userId !== adjustment.userId || entry.status === 'REMOVED') {
-        throw new TimeEntryNotAdjustableError();
-      }
+    const adjustmentIds = input.decisions.map(({ adjustmentId }) => adjustmentId);
+    if (new Set(adjustmentIds).size !== adjustmentIds.length) {
+      throw new TimeEntryAdjustmentConflictError();
     }
 
-    await this.adjustmentRepository.approve(adjustment, decidedById);
-  }
-
-  async reject(adjustmentId: string, decidedById: string) {
-    const adjustment = await this.findPendingAdjustment(adjustmentId);
-    await this.ensureOpenPeriods(adjustment.userId, [adjustment]);
-    await this.adjustmentRepository.reject(adjustmentId, decidedById);
-  }
-
-  private async findPendingAdjustment(adjustmentId: string) {
-    const adjustment = await this.adjustmentRepository.findById(adjustmentId);
-    if (adjustment?.status !== 'PENDING') {
+    const adjustments = await Promise.all(
+      adjustmentIds.map((id) => this.adjustmentRepository.findById(id)),
+    );
+    if (adjustments.some((adjustment) => adjustment?.status !== 'PENDING')) {
       throw new TimeEntryAdjustmentNotPendingError();
     }
-    return adjustment;
+
+    const validAdjustments = adjustments.filter(
+      (adjustment): adjustment is TimeEntryAdjustment => adjustment !== null,
+    );
+    const users = [...new Set(validAdjustments.map(({ userId }) => userId))];
+    await Promise.all(
+      users.map((userId) =>
+        this.ensureOpenPeriods(
+          userId,
+          validAdjustments.filter((adjustment) => adjustment.userId === userId),
+        ),
+      ),
+    );
+
+    const decisions: TimeEntryAdjustmentDecision[] = validAdjustments.map((adjustment, index) => ({
+      adjustment,
+      status: input.decisions[index]?.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+    }));
+    const approved = decisions
+      .filter(({ status }) => status === 'APPROVED')
+      .map(({ adjustment }) => adjustment);
+
+    await this.ensureApprovedTargetsAreAdjustable(approved);
+    await this.ensureApprovedDailyLimits(approved);
+    await this.adjustmentRepository.decideMany(decisions, input.decidedById);
   }
 
   private async prepareAdjustments(input: SubmitTimeEntryAdjustmentsInput) {
@@ -235,6 +249,54 @@ export class TimeEntryAdjustmentService {
         const entries = await this.timeEntryRepository.findByUserAndDay(userId, dayKey);
         const activeCount = entries.filter(({ status }) => status === 'ACTIVE').length;
         const dailyAdjustments = adjustments.filter((adjustment) => adjustment.dayKey === dayKey);
+        const additions = dailyAdjustments.filter(({ type }) => type === 'ADD').length;
+        const removals = dailyAdjustments.filter(({ type }) => type === 'REMOVE').length;
+
+        if (activeCount + additions - removals > MAX_DAILY_TIME_ENTRIES) {
+          throw new TimeEntryAdjustmentLimitError();
+        }
+      }),
+    );
+  }
+
+  private async ensureApprovedTargetsAreAdjustable(adjustments: TimeEntryAdjustment[]) {
+    const targetAdjustments = adjustments.filter(
+      (adjustment) => adjustment.type !== 'ADD' && adjustment.targetTimeEntryId !== null,
+    );
+    const targetIds = targetAdjustments.flatMap(({ targetTimeEntryId }) =>
+      targetTimeEntryId ? [targetTimeEntryId] : [],
+    );
+
+    if (new Set(targetIds).size !== targetIds.length) {
+      throw new TimeEntryAdjustmentConflictError();
+    }
+
+    const entries = await Promise.all(targetIds.map((id) => this.timeEntryRepository.findById(id)));
+    entries.forEach((entry, index) => {
+      const adjustment = targetAdjustments[index];
+      if (!adjustment || entry?.userId !== adjustment.userId || entry.status !== 'ACTIVE') {
+        throw new TimeEntryNotAdjustableError();
+      }
+    });
+  }
+
+  private async ensureApprovedDailyLimits(adjustments: TimeEntryAdjustment[]) {
+    const days = [
+      ...new Map(
+        adjustments.map((adjustment) => [
+          `${adjustment.userId}:${adjustment.dayKey}`,
+          { dayKey: adjustment.dayKey, userId: adjustment.userId },
+        ]),
+      ).values(),
+    ];
+
+    await Promise.all(
+      days.map(async ({ dayKey, userId }) => {
+        const entries = await this.timeEntryRepository.findByUserAndDay(userId, dayKey);
+        const activeCount = entries.filter(({ status }) => status === 'ACTIVE').length;
+        const dailyAdjustments = adjustments.filter(
+          (adjustment) => adjustment.userId === userId && adjustment.dayKey === dayKey,
+        );
         const additions = dailyAdjustments.filter(({ type }) => type === 'ADD').length;
         const removals = dailyAdjustments.filter(({ type }) => type === 'REMOVE').length;
 

@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { TimeEntryAdjustmentDecisionCommand } from '@/application/time-entry-adjustments/time-entry-adjustment-service';
 import type { TimeEntryAdjustment } from '@/domain/time-entry-adjustment';
 import { Alert } from '@/ui/components/Alert';
 import { Button } from '@/ui/components/Button';
@@ -10,26 +11,36 @@ interface TimeEntryAdjustmentReviewDialogProps {
   dayKey: string;
   errorMessage: string | null;
   isSubmitting: boolean;
-  onApprove?: ((adjustmentId: string) => void) | undefined;
+  canDecide: boolean;
   onClose: () => void;
-  onReject?: ((adjustmentId: string) => void) | undefined;
+  onSubmit: (decisions: TimeEntryAdjustmentDecisionCommand[]) => Promise<boolean>;
 }
 
 export function TimeEntryAdjustmentReviewDialog({
   adjustments,
+  canDecide,
   dayKey,
   errorMessage,
   isSubmitting,
-  onApprove,
   onClose,
-  onReject,
+  onSubmit,
 }: TimeEntryAdjustmentReviewDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [decisions, setDecisions] = useState<Record<string, 'APPROVE' | 'REJECT' | undefined>>({});
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (dialog && !dialog.open) dialog.showModal();
   }, []);
+
+  async function submitDecisions() {
+    const commands = Object.entries(decisions).flatMap(([adjustmentId, decision]) =>
+      decision ? [{ adjustmentId, decision }] : [],
+    );
+    if (await onSubmit(commands)) onClose();
+  }
+
+  const hasDecisions = Object.values(decisions).some(Boolean);
 
   return (
     <dialog
@@ -43,15 +54,32 @@ export function TimeEntryAdjustmentReviewDialog({
       </h2>
       <TimeEntryAdjustmentHistory
         adjustments={adjustments}
+        decisions={decisions}
         isSubmitting={isSubmitting}
-        onApprove={onApprove}
-        onReject={onReject}
+        onDecision={
+          canDecide
+            ? (adjustmentId, decision) => {
+                setDecisions((current) => ({ ...current, [adjustmentId]: decision }));
+              }
+            : undefined
+        }
       />
       {errorMessage && <Alert variant="error">{errorMessage}</Alert>}
-      <div className="mt-6 flex justify-end">
+      <div className="mt-6 flex justify-end gap-3">
         <Button onClick={onClose} type="button" variant="secondary">
-          Fechar
+          {canDecide ? 'Cancelar' : 'Fechar'}
         </Button>
+        {canDecide && (
+          <Button
+            disabled={!hasDecisions || isSubmitting}
+            onClick={() => {
+              void submitDecisions();
+            }}
+            type="button"
+          >
+            {isSubmitting ? 'Confirmando...' : 'Confirmar decisões'}
+          </Button>
+        )}
       </div>
     </dialog>
   );
