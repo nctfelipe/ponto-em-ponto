@@ -1,13 +1,13 @@
 import {
   Timestamp,
-  addDoc,
   collection,
-  getDoc,
+  doc,
   getDocs,
   getFirestore,
   query,
   serverTimestamp,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import {
   TimeEntryAdjustmentRepositoryError,
@@ -50,20 +50,24 @@ function toAdjustment(id: string, data: TimeEntryAdjustmentDocument): TimeEntryA
 export class FirestoreTimeEntryAdjustmentRepository implements TimeEntryAdjustmentRepository {
   private readonly firestore = getFirestore(getFirebaseApp());
 
-  async create(adjustment: NewTimeEntryAdjustment) {
+  async createMany(adjustments: NewTimeEntryAdjustment[]) {
     try {
-      const reference = await addDoc(collection(this.firestore, 'timeEntryAdjustments'), {
-        ...adjustment,
-        decidedAt: null,
-        decidedById: null,
-        requestedAt: serverTimestamp(),
-        status: 'PENDING',
-      });
-      const snapshot = await getDoc(reference);
+      const batch = writeBatch(this.firestore);
 
-      return toAdjustment(snapshot.id, snapshot.data() as TimeEntryAdjustmentDocument);
+      adjustments.forEach((adjustment) => {
+        const reference = doc(collection(this.firestore, 'timeEntryAdjustments'));
+        batch.set(reference, {
+          ...adjustment,
+          decidedAt: null,
+          decidedById: null,
+          requestedAt: serverTimestamp(),
+          status: 'PENDING',
+        });
+      });
+
+      await batch.commit();
     } catch (error: unknown) {
-      throw new TimeEntryAdjustmentRepositoryError('Unable to create adjustment request.', {
+      throw new TimeEntryAdjustmentRepositoryError('Unable to create adjustment requests.', {
         cause: error,
       });
     }

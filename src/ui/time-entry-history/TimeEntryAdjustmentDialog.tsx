@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MonthlyTimeEntryDay } from '@/application/time-entries/time-entry-service';
+import type { TimeEntryAdjustmentCommand } from '@/application/time-entry-adjustments/time-entry-adjustment-service';
 import type { TimeEntry } from '@/domain/time-entry';
 import { Alert } from '@/ui/components/Alert';
 import { Button } from '@/ui/components/Button';
@@ -9,14 +10,13 @@ import {
   formatBusinessTimeInput,
   parseBusinessDayAndTime,
 } from '@/ui/formatters/business-time';
-import type { TimeEntryAdjustmentSubmission } from '@/ui/time-entry-history/useTimeEntryAdjustment';
 
 interface TimeEntryAdjustmentDialogProps {
   day: MonthlyTimeEntryDay;
   errorMessage: string | null;
   isSubmitting: boolean;
   onCancel: () => void;
-  onSubmit: (requests: TimeEntryAdjustmentSubmission[]) => Promise<boolean>;
+  onSubmit: (requests: TimeEntryAdjustmentCommand[]) => Promise<boolean>;
 }
 
 interface DraftEntry {
@@ -71,7 +71,7 @@ export function TimeEntryAdjustmentDialog({
   }
 
   function createRequests() {
-    return draftEntries.flatMap<TimeEntryAdjustmentSubmission>((draft) => {
+    return draftEntries.flatMap<TimeEntryAdjustmentCommand>((draft) => {
       if (draft.entry && draft.isRemoved) {
         return [{ timeEntryId: draft.entry.id, type: 'REMOVE' }];
       }

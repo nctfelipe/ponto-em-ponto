@@ -69,18 +69,11 @@ class FakeTimeEntryRepository implements TimeEntryRepository {
 
 class FakeAdjustmentRepository implements TimeEntryAdjustmentRepository {
   adjustments: TimeEntryAdjustment[] = [];
-  readonly createInputs: NewTimeEntryAdjustment[] = [];
+  readonly createInputs: NewTimeEntryAdjustment[][] = [];
 
-  create(adjustment: NewTimeEntryAdjustment) {
-    this.createInputs.push(adjustment);
-    return Promise.resolve(
-      createAdjustment({
-        ...adjustment,
-        id: `adjustment-${String(this.createInputs.length)}`,
-        requestedAt: new Date('2026-09-12T12:00:00.000Z'),
-        status: 'PENDING',
-      }),
-    );
+  createMany(adjustments: NewTimeEntryAdjustment[]) {
+    this.createInputs.push(adjustments);
+    return Promise.resolve();
   }
 
   findByTimeEntryId(timeEntryId: string) {
@@ -116,30 +109,44 @@ function createService() {
 }
 
 describe('TimeEntryAdjustmentService', () => {
-  it('creates a change request from the current effective time', async () => {
+  it('persists a validated batch from the current effective state', async () => {
     const { adjustmentRepository, service, timeEntryRepository } = createService();
     const effectiveTime = new Date('2026-09-10T10:55:00.000Z');
     const proposedTime = new Date('2026-09-10T11:05:00.000Z');
     timeEntryRepository.entries = [{ ...originalEntry, recordedAt: effectiveTime }];
 
-    await service.requestChange({
-      proposedRecordedAt: proposedTime,
+    await service.submitAdjustments({
+      commands: [
+        { proposedRecordedAt: proposedTime, timeEntryId: originalEntry.id, type: 'CHANGE' },
+        { proposedRecordedAt: new Date('2026-09-10T15:00:00.000Z'), type: 'ADD' },
+      ],
       requestedById: 'user-1',
-      timeEntryId: originalEntry.id,
       userId: 'user-1',
     });
 
     expect(adjustmentRepository.createInputs).toEqual([
-      {
-        currentRecordedAt: effectiveTime,
-        dayKey: originalEntry.dayKey,
-        monthKey: originalEntry.monthKey,
-        proposedRecordedAt: proposedTime,
-        requestedById: 'user-1',
-        targetTimeEntryId: originalEntry.id,
-        type: 'CHANGE',
-        userId: 'user-1',
-      },
+      [
+        {
+          currentRecordedAt: effectiveTime,
+          dayKey: originalEntry.dayKey,
+          monthKey: originalEntry.monthKey,
+          proposedRecordedAt: proposedTime,
+          requestedById: 'user-1',
+          targetTimeEntryId: originalEntry.id,
+          type: 'CHANGE',
+          userId: 'user-1',
+        },
+        {
+          currentRecordedAt: null,
+          dayKey: originalEntry.dayKey,
+          monthKey: originalEntry.monthKey,
+          proposedRecordedAt: new Date('2026-09-10T15:00:00.000Z'),
+          requestedById: 'user-1',
+          targetTimeEntryId: null,
+          type: 'ADD',
+          userId: 'user-1',
+        },
+      ],
     ]);
   });
 
@@ -148,9 +155,9 @@ describe('TimeEntryAdjustmentService', () => {
     adjustmentRepository.adjustments = [createAdjustment()];
 
     await expect(
-      service.requestRemoval({
+      service.submitAdjustments({
+        commands: [{ timeEntryId: originalEntry.id, type: 'REMOVE' }],
         requestedById: 'user-1',
-        timeEntryId: originalEntry.id,
         userId: 'user-1',
       }),
     ).rejects.toBeInstanceOf(TimeEntryAdjustmentConflictError);
@@ -161,10 +168,15 @@ describe('TimeEntryAdjustmentService', () => {
     timeEntryRepository.entries = [{ ...originalEntry, status: 'REMOVED' }];
 
     await expect(
-      service.requestChange({
-        proposedRecordedAt: new Date('2026-09-10T11:05:00.000Z'),
+      service.submitAdjustments({
+        commands: [
+          {
+            proposedRecordedAt: new Date('2026-09-10T11:05:00.000Z'),
+            timeEntryId: originalEntry.id,
+            type: 'CHANGE',
+          },
+        ],
         requestedById: 'user-1',
-        timeEntryId: originalEntry.id,
         userId: 'user-1',
       }),
     ).rejects.toBeInstanceOf(TimeEntryNotAdjustableError);
@@ -175,27 +187,31 @@ describe('TimeEntryAdjustmentService', () => {
     periodRepository.isPeriodClosed = true;
 
     await expect(
-      service.requestAddition({
-        proposedRecordedAt: new Date('2026-09-10T15:00:00.000Z'),
+      service.submitAdjustments({
+        commands: [{ proposedRecordedAt: new Date('2026-09-10T15:00:00.000Z'), type: 'ADD' }],
         requestedById: 'user-1',
         userId: 'user-1',
       }),
     ).rejects.toBeInstanceOf(ClosedTimePeriodError);
   });
 
-  it('prevents an addition above the effective daily limit', async () => {
-    const { service, timeEntryRepository } = createService();
-    timeEntryRepository.entries = Array.from({ length: 8 }, (_, index) => ({
+  it('rejects the whole batch when its additions exceed the effective daily limit', async () => {
+    const { adjustmentRepository, service, timeEntryRepository } = createService();
+    timeEntryRepository.entries = Array.from({ length: 7 }, (_, index) => ({
       ...originalEntry,
       id: `entry-${String(index)}`,
     }));
 
     await expect(
-      service.requestAddition({
-        proposedRecordedAt: new Date('2026-09-10T15:00:00.000Z'),
+      service.submitAdjustments({
+        commands: [
+          { proposedRecordedAt: new Date('2026-09-10T15:00:00.000Z'), type: 'ADD' },
+          { proposedRecordedAt: new Date('2026-09-10T18:00:00.000Z'), type: 'ADD' },
+        ],
         requestedById: 'user-1',
         userId: 'user-1',
       }),
     ).rejects.toBeInstanceOf(TimeEntryAdjustmentLimitError);
+    expect(adjustmentRepository.createInputs).toHaveLength(0);
   });
 });

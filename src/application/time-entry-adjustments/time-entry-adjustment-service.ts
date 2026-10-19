@@ -6,21 +6,17 @@ import type {
   TimeEntryAdjustmentRepository,
 } from '@/application/time-entry-adjustments/time-entry-adjustment-repository';
 import type { TimePeriodRepository } from '@/application/time-periods/time-period-repository';
+import type { TimeEntry } from '@/domain/time-entry';
 import type { TimeEntryAdjustment } from '@/domain/time-entry-adjustment';
 
-interface RequestAdditionInput {
-  proposedRecordedAt: Date;
-  requestedById: string;
-  userId: string;
-}
+export type TimeEntryAdjustmentCommand =
+  | { proposedRecordedAt: Date; type: 'ADD' }
+  | { proposedRecordedAt: Date; timeEntryId: string; type: 'CHANGE' }
+  | { timeEntryId: string; type: 'REMOVE' };
 
-interface RequestChangeInput extends RequestAdditionInput {
-  timeEntryId: string;
-}
-
-interface RequestRemovalInput {
+export interface SubmitTimeEntryAdjustmentsInput {
+  commands: TimeEntryAdjustmentCommand[];
   requestedById: string;
-  timeEntryId: string;
   userId: string;
 }
 
@@ -56,6 +52,10 @@ function hasPendingAdjustment(adjustments: TimeEntryAdjustment[]) {
   return adjustments.some((adjustment) => adjustment.status === 'PENDING');
 }
 
+function getTargetIds(commands: TimeEntryAdjustmentCommand[]) {
+  return commands.flatMap((command) => (command.type === 'ADD' ? [] : [command.timeEntryId]));
+}
+
 export class TimeEntryAdjustmentService {
   private readonly adjustmentRepository: TimeEntryAdjustmentRepository;
   private readonly periodRepository: TimePeriodRepository;
@@ -71,68 +71,116 @@ export class TimeEntryAdjustmentService {
     this.timeEntryRepository = timeEntryRepository;
   }
 
-  async requestAddition(input: RequestAdditionInput) {
-    const { dayKey, monthKey } = getBusinessDateKeys(input.proposedRecordedAt);
-    await this.ensureOpenPeriod(input.userId, monthKey);
+  async submitAdjustments(input: SubmitTimeEntryAdjustmentsInput) {
+    if (input.commands.length === 0) return;
 
-    const entries = await this.timeEntryRepository.findByUserAndDay(input.userId, dayKey);
-    const activeEntryCount = entries.filter((entry) => entry.status === 'ACTIVE').length;
-
-    if (activeEntryCount >= MAX_DAILY_TIME_ENTRIES) {
-      throw new TimeEntryAdjustmentLimitError();
+    const targetIds = getTargetIds(input.commands);
+    if (new Set(targetIds).size !== targetIds.length) {
+      throw new TimeEntryAdjustmentConflictError();
     }
 
-    return this.adjustmentRepository.create({
-      ...input,
-      currentRecordedAt: null,
-      dayKey,
-      monthKey,
-      targetTimeEntryId: null,
-      type: 'ADD',
+    const targetEntries = await this.findTargetEntries(targetIds, input.userId);
+    await this.ensureTargetsHaveNoPendingAdjustments(targetIds);
+
+    const adjustments = input.commands.map((command) =>
+      this.createAdjustment(command, input, targetEntries),
+    );
+
+    await this.ensureOpenPeriods(input.userId, adjustments);
+    await this.ensureDailyLimits(input.userId, adjustments);
+    await this.adjustmentRepository.createMany(adjustments);
+  }
+
+  private async findTargetEntries(targetIds: string[], userId: string) {
+    const entries = await Promise.all(targetIds.map((id) => this.timeEntryRepository.findById(id)));
+    const entriesById = new Map<string, TimeEntry>();
+
+    entries.forEach((entry, index) => {
+      if (entry?.userId !== userId || entry.status === 'REMOVED') {
+        throw new TimeEntryNotAdjustableError();
+      }
+
+      const targetId = targetIds[index];
+      if (targetId) entriesById.set(targetId, entry);
     });
+
+    return entriesById;
   }
 
-  requestChange(input: RequestChangeInput) {
-    return this.requestForTimeEntry(input, 'CHANGE', input.proposedRecordedAt);
-  }
+  private async ensureTargetsHaveNoPendingAdjustments(targetIds: string[]) {
+    const adjustmentsByTarget = await Promise.all(
+      targetIds.map((id) => this.adjustmentRepository.findByTimeEntryId(id)),
+    );
 
-  requestRemoval(input: RequestRemovalInput) {
-    return this.requestForTimeEntry(input, 'REMOVE', null);
-  }
-
-  private async ensureOpenPeriod(userId: string, monthKey: string) {
-    if (await this.periodRepository.isClosed(userId, monthKey)) {
-      throw new ClosedTimePeriodError();
+    if (adjustmentsByTarget.some(hasPendingAdjustment)) {
+      throw new TimeEntryAdjustmentConflictError();
     }
   }
 
-  private async requestForTimeEntry(
-    input: RequestChangeInput | RequestRemovalInput,
-    type: 'CHANGE' | 'REMOVE',
-    proposedRecordedAt: Date | null,
-  ) {
-    const entry = await this.timeEntryRepository.findById(input.timeEntryId);
+  private createAdjustment(
+    command: TimeEntryAdjustmentCommand,
+    input: SubmitTimeEntryAdjustmentsInput,
+    targetEntries: Map<string, TimeEntry>,
+  ): NewTimeEntryAdjustment {
+    if (command.type === 'ADD') {
+      const { dayKey, monthKey } = getBusinessDateKeys(command.proposedRecordedAt);
+      return {
+        currentRecordedAt: null,
+        dayKey,
+        monthKey,
+        proposedRecordedAt: command.proposedRecordedAt,
+        requestedById: input.requestedById,
+        targetTimeEntryId: null,
+        type: command.type,
+        userId: input.userId,
+      };
+    }
 
-    if (entry?.userId !== input.userId) throw new TimeEntryNotAdjustableError();
+    const entry = targetEntries.get(command.timeEntryId);
+    if (!entry) throw new TimeEntryNotAdjustableError();
 
-    await this.ensureOpenPeriod(input.userId, entry.monthKey);
-    const adjustments = await this.adjustmentRepository.findByTimeEntryId(entry.id);
+    const proposedRecordedAt = command.type === 'CHANGE' ? command.proposedRecordedAt : null;
+    if (proposedRecordedAt) {
+      const proposedKeys = getBusinessDateKeys(proposedRecordedAt);
+      if (proposedKeys.dayKey !== entry.dayKey) throw new TimeEntryNotAdjustableError();
+    }
 
-    if (hasPendingAdjustment(adjustments)) throw new TimeEntryAdjustmentConflictError();
-
-    if (entry.status === 'REMOVED') throw new TimeEntryNotAdjustableError();
-
-    const adjustment: NewTimeEntryAdjustment = {
+    return {
       currentRecordedAt: entry.recordedAt,
       dayKey: entry.dayKey,
       monthKey: entry.monthKey,
       proposedRecordedAt,
       requestedById: input.requestedById,
       targetTimeEntryId: entry.id,
-      type,
+      type: command.type,
       userId: input.userId,
     };
+  }
 
-    return this.adjustmentRepository.create(adjustment);
+  private async ensureOpenPeriods(userId: string, adjustments: NewTimeEntryAdjustment[]) {
+    const monthKeys = [...new Set(adjustments.map(({ monthKey }) => monthKey))];
+    const results = await Promise.all(
+      monthKeys.map((monthKey) => this.periodRepository.isClosed(userId, monthKey)),
+    );
+
+    if (results.some(Boolean)) throw new ClosedTimePeriodError();
+  }
+
+  private async ensureDailyLimits(userId: string, adjustments: NewTimeEntryAdjustment[]) {
+    const dayKeys = [...new Set(adjustments.map(({ dayKey }) => dayKey))];
+
+    await Promise.all(
+      dayKeys.map(async (dayKey) => {
+        const entries = await this.timeEntryRepository.findByUserAndDay(userId, dayKey);
+        const activeCount = entries.filter(({ status }) => status === 'ACTIVE').length;
+        const dailyAdjustments = adjustments.filter((adjustment) => adjustment.dayKey === dayKey);
+        const additions = dailyAdjustments.filter(({ type }) => type === 'ADD').length;
+        const removals = dailyAdjustments.filter(({ type }) => type === 'REMOVE').length;
+
+        if (activeCount + additions - removals > MAX_DAILY_TIME_ENTRIES) {
+          throw new TimeEntryAdjustmentLimitError();
+        }
+      }),
+    );
   }
 }

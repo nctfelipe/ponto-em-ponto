@@ -3,6 +3,7 @@ import {
   ClosedTimePeriodError,
   TimeEntryAdjustmentConflictError,
   TimeEntryAdjustmentLimitError,
+  type TimeEntryAdjustmentCommand,
   type TimeEntryAdjustmentService,
   TimeEntryNotAdjustableError,
 } from '@/application/time-entry-adjustments/time-entry-adjustment-service';
@@ -15,11 +16,6 @@ interface AdjustmentContext {
   requestedById: string;
   userId: string;
 }
-
-export type TimeEntryAdjustmentSubmission =
-  | { proposedRecordedAt: Date; type: 'ADD' }
-  | { proposedRecordedAt: Date; timeEntryId: string; type: 'CHANGE' }
-  | { timeEntryId: string; type: 'REMOVE' };
 
 function getErrorMessage(error: unknown) {
   if (error instanceof ClosedTimePeriodError) return 'Este período já está fechado.';
@@ -43,38 +39,17 @@ export function createUseTimeEntryAdjustment({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    async function submitAll(requests: TimeEntryAdjustmentSubmission[]) {
+    async function submitAll(requests: TimeEntryAdjustmentCommand[]) {
       setErrorMessage(null);
       setSuccessMessage(null);
       setIsSubmitting(true);
 
       try {
-        await Promise.all(
-          requests.map((request) => {
-            if (request.type === 'ADD') {
-              return adjustmentService.requestAddition({
-                proposedRecordedAt: request.proposedRecordedAt,
-                requestedById,
-                userId,
-              });
-            }
-
-            if (request.type === 'CHANGE') {
-              return adjustmentService.requestChange({
-                proposedRecordedAt: request.proposedRecordedAt,
-                requestedById,
-                timeEntryId: request.timeEntryId,
-                userId,
-              });
-            }
-
-            return adjustmentService.requestRemoval({
-              requestedById,
-              timeEntryId: request.timeEntryId,
-              userId,
-            });
-          }),
-        );
+        await adjustmentService.submitAdjustments({
+          commands: requests,
+          requestedById,
+          userId,
+        });
         setSuccessMessage(
           requests.length === 1
             ? 'Solicitação enviada para análise.'

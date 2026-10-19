@@ -12,7 +12,7 @@ export interface NewTimeEntryAdjustment {
 }
 
 export interface TimeEntryAdjustmentRepository {
-  create(adjustment: NewTimeEntryAdjustment): Promise<TimeEntryAdjustment>;
+  createMany(adjustments: NewTimeEntryAdjustment[]): Promise<void>;
   findByTimeEntryId(timeEntryId: string): Promise<TimeEntryAdjustment[]>;
 }
 
