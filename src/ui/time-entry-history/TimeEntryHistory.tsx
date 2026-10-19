@@ -57,9 +57,7 @@ export function TimeEntryHistory({ requestedById, userId }: TimeEntryHistoryProp
           errorMessage={adjustment.errorMessage}
           isSubmitting={adjustment.isSubmitting}
           onCancel={closeAdjustment}
-          onChange={adjustment.requestChange}
-          onCreate={adjustment.requestAddition}
-          onRemove={adjustment.requestRemoval}
+          onSubmit={adjustment.submitAll}
         />
       )}
     </>

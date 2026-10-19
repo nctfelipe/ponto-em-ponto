@@ -2,70 +2,98 @@ import { useEffect, useRef, useState } from 'react';
 import type { MonthlyTimeEntryDay } from '@/application/time-entries/time-entry-service';
 import type { TimeEntry } from '@/domain/time-entry';
 import { Alert } from '@/ui/components/Alert';
-import { Badge } from '@/ui/components/Badge';
 import { Button } from '@/ui/components/Button';
 import { InputField } from '@/ui/components/InputField';
 import {
   formatBusinessDayKey,
-  formatBusinessShortTime,
   formatBusinessTimeInput,
   parseBusinessDayAndTime,
 } from '@/ui/formatters/business-time';
+import type { TimeEntryAdjustmentSubmission } from '@/ui/time-entry-history/useTimeEntryAdjustment';
 
 interface TimeEntryAdjustmentDialogProps {
   day: MonthlyTimeEntryDay;
   errorMessage: string | null;
   isSubmitting: boolean;
   onCancel: () => void;
-  onChange: (entryId: string, proposedRecordedAt: Date) => Promise<boolean>;
-  onCreate: (proposedRecordedAt: Date) => Promise<boolean>;
-  onRemove: (entryId: string) => Promise<boolean>;
+  onSubmit: (requests: TimeEntryAdjustmentSubmission[]) => Promise<boolean>;
 }
 
-type Editor = { entry: TimeEntry; type: 'CHANGE' } | { type: 'ADD' } | null;
+interface DraftEntry {
+  entry: TimeEntry | null;
+  id: string;
+  isRemoved: boolean;
+  time: string;
+}
+
+function createDraftEntry(entry: TimeEntry): DraftEntry {
+  return {
+    entry,
+    id: entry.id,
+    isRemoved: false,
+    time: formatBusinessTimeInput(entry.recordedAt),
+  };
+}
 
 export function TimeEntryAdjustmentDialog({
   day,
   errorMessage,
   isSubmitting,
   onCancel,
-  onChange,
-  onCreate,
-  onRemove,
+  onSubmit,
 }: TimeEntryAdjustmentDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [editor, setEditor] = useState<Editor>(null);
-  const [time, setTime] = useState('');
+  const nextDraftId = useRef(0);
+  const [draftEntries, setDraftEntries] = useState(() => day.entries.map(createDraftEntry));
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (dialog && !dialog.open) dialog.showModal();
   }, []);
 
-  function edit(entry: TimeEntry) {
-    setEditor({ entry, type: 'CHANGE' });
-    setTime(formatBusinessTimeInput(entry.recordedAt));
+  function updateDraft(id: string, update: (draft: DraftEntry) => DraftEntry) {
+    setDraftEntries((current) => current.map((draft) => (draft.id === id ? update(draft) : draft)));
   }
 
-  function add() {
-    setEditor({ type: 'ADD' });
-    setTime('');
+  function addDraft() {
+    const id = `new-${String(nextDraftId.current)}`;
+    nextDraftId.current += 1;
+    setDraftEntries((current) => [...current, { entry: null, id, isRemoved: false, time: '' }]);
   }
+
+  function removeDraft(draft: DraftEntry) {
+    if (!draft.entry) {
+      setDraftEntries((current) => current.filter(({ id }) => id !== draft.id));
+      return;
+    }
+
+    updateDraft(draft.id, (current) => ({ ...current, isRemoved: !current.isRemoved }));
+  }
+
+  function createRequests() {
+    return draftEntries.flatMap<TimeEntryAdjustmentSubmission>((draft) => {
+      if (draft.entry && draft.isRemoved) {
+        return [{ timeEntryId: draft.entry.id, type: 'REMOVE' }];
+      }
+
+      if (draft.isRemoved || !draft.time) return [];
+
+      const proposedRecordedAt = parseBusinessDayAndTime(day.dayKey, draft.time);
+
+      if (!draft.entry) return [{ proposedRecordedAt, type: 'ADD' }];
+      if (draft.time !== formatBusinessTimeInput(draft.entry.recordedAt)) {
+        return [{ proposedRecordedAt, timeEntryId: draft.entry.id, type: 'CHANGE' }];
+      }
+
+      return [];
+    });
+  }
+
+  const requests = createRequests();
+  const hasIncompleteEntry = draftEntries.some((draft) => !draft.isRemoved && !draft.time);
 
   async function submit() {
-    if (!editor) return;
-
-    const proposedRecordedAt = parseBusinessDayAndTime(day.dayKey, time);
-    const succeeded =
-      editor.type === 'CHANGE'
-        ? await onChange(editor.entry.id, proposedRecordedAt)
-        : await onCreate(proposedRecordedAt);
-
-    if (succeeded) onCancel();
-  }
-
-  async function remove(entryId: string) {
-    if (await onRemove(entryId)) onCancel();
+    if (requests.length > 0 && (await onSubmit(requests))) onCancel();
   }
 
   return (
@@ -78,92 +106,67 @@ export function TimeEntryAdjustmentDialog({
       <h2 className="text-xl font-semibold capitalize text-content" id="adjustment-title">
         Ajustes de {formatBusinessDayKey(day.dayKey)}
       </h2>
+      <p className="mt-2 text-sm text-content-secondary">
+        Revise as alterações antes de enviar as solicitações.
+      </p>
 
       <div className="mt-5 space-y-3">
-        {day.entries.length === 0 && (
+        {draftEntries.length === 0 && (
           <p className="text-sm text-content-muted">Nenhuma batida registrada.</p>
         )}
 
-        {day.entries.map((entry) => (
+        {draftEntries.map((draft, index) => (
           <div
-            className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
-            key={entry.id}
+            className={`flex items-end gap-3 rounded-lg border border-border p-3 ${draft.isRemoved ? 'bg-danger-subtle opacity-70' : ''}`}
+            key={draft.id}
           >
-            <Badge>
-              <time dateTime={entry.recordedAt.toISOString()}>
-                {formatBusinessShortTime(entry.recordedAt)}
-              </time>
-            </Badge>
-            <div className="flex gap-2">
-              <Button
-                disabled={isSubmitting}
-                onClick={() => {
-                  edit(entry);
-                }}
-                size="small"
-                type="button"
-                variant="secondary"
-              >
-                Alterar
-              </Button>
-              <Button
-                disabled={isSubmitting}
-                onClick={() => void remove(entry.id)}
-                size="small"
-                type="button"
-                variant="danger"
-              >
-                Remover
-              </Button>
-            </div>
+            <InputField
+              disabled={draft.isRemoved || isSubmitting}
+              label={draft.entry ? `Batida ${String(index + 1)}` : 'Nova batida'}
+              onChange={(event) => {
+                updateDraft(draft.id, (current) => ({ ...current, time: event.target.value }));
+              }}
+              required
+              type="time"
+              value={draft.time}
+            />
+            <Button
+              disabled={isSubmitting}
+              onClick={() => {
+                removeDraft(draft);
+              }}
+              size="small"
+              type="button"
+              variant={draft.isRemoved ? 'secondary' : 'danger'}
+            >
+              {draft.isRemoved ? 'Desfazer' : draft.entry ? 'Remover' : 'Descartar'}
+            </Button>
           </div>
         ))}
       </div>
 
-      {editor && (
-        <div className="mt-5 space-y-4 rounded-lg bg-background p-4">
-          <InputField
-            disabled={isSubmitting}
-            label={editor.type === 'ADD' ? 'Horário da nova batida' : 'Novo horário'}
-            onChange={(event) => {
-              setTime(event.target.value);
-            }}
-            required
-            type="time"
-            value={time}
-          />
-          <div className="flex justify-end gap-3">
-            <Button
-              disabled={isSubmitting}
-              onClick={() => {
-                setEditor(null);
-              }}
-              size="small"
-              type="button"
-              variant="secondary"
-            >
-              Cancelar
-            </Button>
-            <Button
-              disabled={isSubmitting || !time}
-              onClick={() => void submit()}
-              size="small"
-              type="button"
-            >
-              {isSubmitting ? 'Enviando...' : 'Enviar solicitação'}
-            </Button>
-          </div>
-        </div>
-      )}
+      <Button
+        className="mt-4"
+        disabled={isSubmitting}
+        onClick={addDraft}
+        type="button"
+        variant="secondary"
+      >
+        Adicionar batida
+      </Button>
 
       {errorMessage && <Alert variant="error">{errorMessage}</Alert>}
 
-      <div className="mt-6 flex justify-between gap-3">
+      <div className="mt-6 grid grid-cols-2 gap-3">
         <Button disabled={isSubmitting} onClick={onCancel} type="button" variant="secondary">
-          Fechar
+          Cancelar
         </Button>
-        <Button disabled={isSubmitting} onClick={add} type="button">
-          Adicionar batida
+        <Button
+          disabled={isSubmitting || hasIncompleteEntry || requests.length === 0}
+          onClick={() => void submit()}
+          type="button"
+        >
+          {isSubmitting ? 'Enviando...' : 'Confirmar ajustes'}
         </Button>
       </div>
     </dialog>

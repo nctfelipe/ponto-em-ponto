@@ -16,6 +16,11 @@ interface AdjustmentContext {
   userId: string;
 }
 
+export type TimeEntryAdjustmentSubmission =
+  | { proposedRecordedAt: Date; type: 'ADD' }
+  | { proposedRecordedAt: Date; timeEntryId: string; type: 'CHANGE' }
+  | { timeEntryId: string; type: 'REMOVE' };
+
 function getErrorMessage(error: unknown) {
   if (error instanceof ClosedTimePeriodError) return 'Este período já está fechado.';
   if (error instanceof TimeEntryAdjustmentConflictError) {
@@ -38,14 +43,43 @@ export function createUseTimeEntryAdjustment({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    async function submit(request: () => Promise<unknown>) {
+    async function submitAll(requests: TimeEntryAdjustmentSubmission[]) {
       setErrorMessage(null);
       setSuccessMessage(null);
       setIsSubmitting(true);
 
       try {
-        await request();
-        setSuccessMessage('Solicitação enviada para análise.');
+        await Promise.all(
+          requests.map((request) => {
+            if (request.type === 'ADD') {
+              return adjustmentService.requestAddition({
+                proposedRecordedAt: request.proposedRecordedAt,
+                requestedById,
+                userId,
+              });
+            }
+
+            if (request.type === 'CHANGE') {
+              return adjustmentService.requestChange({
+                proposedRecordedAt: request.proposedRecordedAt,
+                requestedById,
+                timeEntryId: request.timeEntryId,
+                userId,
+              });
+            }
+
+            return adjustmentService.requestRemoval({
+              requestedById,
+              timeEntryId: request.timeEntryId,
+              userId,
+            });
+          }),
+        );
+        setSuccessMessage(
+          requests.length === 1
+            ? 'Solicitação enviada para análise.'
+            : 'Solicitações enviadas para análise.',
+        );
         return true;
       } catch (error: unknown) {
         setErrorMessage(getErrorMessage(error));
@@ -58,21 +92,7 @@ export function createUseTimeEntryAdjustment({
     return {
       errorMessage,
       isSubmitting,
-      requestAddition: (proposedRecordedAt: Date) =>
-        submit(() =>
-          adjustmentService.requestAddition({ proposedRecordedAt, requestedById, userId }),
-        ),
-      requestChange: (timeEntryId: string, proposedRecordedAt: Date) =>
-        submit(() =>
-          adjustmentService.requestChange({
-            proposedRecordedAt,
-            requestedById,
-            timeEntryId,
-            userId,
-          }),
-        ),
-      requestRemoval: (timeEntryId: string) =>
-        submit(() => adjustmentService.requestRemoval({ requestedById, timeEntryId, userId })),
+      submitAll,
       resetFeedback: () => {
         setErrorMessage(null);
         setSuccessMessage(null);
