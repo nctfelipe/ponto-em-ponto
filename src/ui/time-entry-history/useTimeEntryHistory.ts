@@ -4,22 +4,22 @@ import type {
   MonthlyTimeEntryDay,
   TimeEntryService,
 } from '@/application/time-entries/time-entry-service';
-import type { TimeEntryAdjustmentService } from '@/application/time-entry-adjustments/time-entry-adjustment-service';
-import type { TimeEntryAdjustment } from '@/domain/time-entry-adjustment';
+import type { TimeEntryCorrectionService } from '@/application/time-entry-corrections/time-entry-correction-service';
+import type { TimeEntryCorrection } from '@/domain/time-entry-correction';
 
 interface CreateUseTimeEntryHistoryDependencies {
-  adjustmentService: TimeEntryAdjustmentService;
+  correctionService: TimeEntryCorrectionService;
   timeEntryService: TimeEntryService;
 }
 
 export function createUseTimeEntryHistory({
-  adjustmentService,
+  correctionService,
   timeEntryService,
 }: CreateUseTimeEntryHistoryDependencies) {
   return function useTimeEntryHistory(userId: string) {
     const [monthKey, setMonthKey] = useState(() => getBusinessDateKeys(new Date()).monthKey);
     const [days, setDays] = useState<MonthlyTimeEntryDay[]>([]);
-    const [adjustments, setAdjustments] = useState<TimeEntryAdjustment[]>([]);
+    const [corrections, setCorrections] = useState<TimeEntryCorrection[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
     const [reloadCount, setReloadCount] = useState(0);
@@ -28,7 +28,7 @@ export function createUseTimeEntryHistory({
       () =>
         Promise.all([
           timeEntryService.findMonth(userId, monthKey, new Date()),
-          adjustmentService.findMonth(userId, monthKey),
+          correctionService.findMonth(userId, monthKey),
         ]),
       [monthKey, userId],
     );
@@ -40,10 +40,10 @@ export function createUseTimeEntryHistory({
       setHasError(false);
 
       void findMonth()
-        .then(([timeEntries, monthlyAdjustments]) => {
+        .then(([timeEntries, monthlyCorrections]) => {
           if (isActive) {
             setDays(timeEntries.days);
-            setAdjustments(monthlyAdjustments);
+            setCorrections(monthlyCorrections);
           }
         })
         .catch(() => {
@@ -64,7 +64,7 @@ export function createUseTimeEntryHistory({
 
     return {
       days,
-      adjustments,
+      corrections,
       hasError,
       isLoading,
       load,

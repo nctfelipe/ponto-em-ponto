@@ -24,30 +24,27 @@ service cloud.firestore {
       return !exists(period) || get(period).data.status == 'OPEN';
     }
 
-    function isValidAdjustmentTarget(userId, timeEntryId) {
-      return timeEntryId is string
-        && get(/databases/$(database)/documents/timeEntries/$(timeEntryId)).data.userId == userId;
+    function canReadUserData(userId) {
+      return isCurrentUser(userId) || isAdmin();
     }
 
-    match /profiles/{userId} {
-      allow create: if isCurrentUser(userId)
-        && request.resource.data.keys().hasOnly([
+    function isValidNewProfile(data) {
+      return data.keys().hasOnly([
           'displayName',
           'email',
           'status',
           'createdAt',
           'updatedAt'
         ])
-        && request.resource.data.displayName is string
-        && request.resource.data.email == request.auth.token.email
-        && request.resource.data.status == 'PENDING'
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
+        && data.displayName is string
+        && data.email == request.auth.token.email
+        && data.status == 'PENDING'
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
 
-      allow get: if isCurrentUser(userId) || isAdmin();
-      allow list: if isAdmin();
-
-      allow update: if isAdmin()
+    function canActivateProfile() {
+      return isAdmin()
         && resource.data.status == 'PENDING'
         && request.resource.data.status == 'ACTIVE'
         && request.resource.data.updatedAt == request.time
@@ -55,118 +52,100 @@ service cloud.firestore {
           'status',
           'updatedAt'
         ]);
-
-      allow delete: if false;
     }
 
-    match /timeEntries/{entryId} {
-      allow create: if isSignedIn()
-        && request.resource.data.keys().hasOnly([
+    function hasValidTimeEntryFields(data) {
+      return data.keys().hasOnly([
           'userId',
           'recordedAt',
           'dayKey',
           'monthKey',
           'status'
         ])
-        && isActiveProfile(request.resource.data.userId)
-        && request.resource.data.status == 'ACTIVE'
-        && request.resource.data.recordedAt is timestamp
-        && request.resource.data.dayKey is string
-        && request.resource.data.monthKey is string
+        && data.userId is string
+        && data.recordedAt is timestamp
+        && data.dayKey is string
+        && data.monthKey is string
+        && data.status in ['ACTIVE', 'REMOVED'];
+    }
+
+    function canCreateTimeEntry() {
+      let entry = request.resource.data;
+      return isSignedIn()
+        && hasValidTimeEntryFields(entry)
+        && isActiveProfile(entry.userId)
+        && entry.status == 'ACTIVE'
         && (
           isAdmin()
-          || (
-            isCurrentUser(request.resource.data.userId)
-            && request.resource.data.recordedAt == request.time
-          )
+          || (isCurrentUser(entry.userId) && entry.recordedAt == request.time)
         );
+    }
 
-      allow get, list: if isCurrentUser(resource.data.userId) || isAdmin();
-
-      allow update: if isAdmin()
+    function canUpdateTimeEntry() {
+      return isAdmin()
+        && hasValidTimeEntryFields(request.resource.data)
         && request.resource.data.userId == resource.data.userId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'recordedAt',
           'dayKey',
           'monthKey',
           'status'
-        ])
-        && request.resource.data.recordedAt is timestamp
-        && request.resource.data.dayKey is string
-        && request.resource.data.monthKey is string
-        && request.resource.data.status in ['ACTIVE', 'REMOVED'];
-
-      allow delete: if false;
+        ]);
     }
 
-    match /timeEntryAdjustments/{adjustmentId} {
-      allow create: if isSignedIn()
-        && request.resource.data.keys().hasOnly([
+    function hasValidCorrectionFields(data) {
+      return data.keys().hasOnly([
           'userId',
           'requestedById',
-          'type',
           'status',
-          'targetTimeEntryId',
-          'currentRecordedAt',
-          'proposedRecordedAt',
+          'previousEntries',
+          'proposedEntries',
           'dayKey',
           'monthKey',
           'requestedAt',
           'decidedAt',
           'decidedById'
         ])
-        && request.resource.data.requestedById == request.auth.uid
-        && (isCurrentUser(request.resource.data.userId) || isAdmin())
-        && isActiveProfile(request.resource.data.userId)
-        && request.resource.data.dayKey is string
-        && request.resource.data.monthKey is string
-        && request.resource.data.requestedAt == request.time
-        && isOpenPeriod(
-          request.resource.data.userId,
-          request.resource.data.monthKey
-        )
-        && (
-          (
-            request.resource.data.status == 'PENDING'
-            && request.resource.data.decidedAt == null
-            && request.resource.data.decidedById == null
-          )
-          || (
-            isAdmin()
-            && request.resource.data.status == 'APPROVED'
-            && request.resource.data.decidedAt == request.time
-            && request.resource.data.decidedById == request.auth.uid
-          )
-        )
-        && (
-          (
-            request.resource.data.type == 'ADD'
-            && request.resource.data.targetTimeEntryId == null
-            && request.resource.data.currentRecordedAt == null
-            && request.resource.data.proposedRecordedAt is timestamp
-          )
-          || (
-            request.resource.data.type == 'CHANGE'
-            && isValidAdjustmentTarget(
-              request.resource.data.userId,
-              request.resource.data.targetTimeEntryId
-            )
-            && request.resource.data.currentRecordedAt is timestamp
-            && request.resource.data.proposedRecordedAt is timestamp
-          )
-          || (
-            request.resource.data.type == 'REMOVE'
-            && isValidAdjustmentTarget(
-              request.resource.data.userId,
-              request.resource.data.targetTimeEntryId
-            )
-            && request.resource.data.currentRecordedAt is timestamp
-            && request.resource.data.proposedRecordedAt == null
-          )
-        );
+        && data.userId is string
+        && data.requestedById is string
+        && data.dayKey is string
+        && data.monthKey is string
+        && data.previousEntries is list
+        && data.proposedEntries is list
+        && data.previousEntries.size() <= 8
+        && data.proposedEntries.size() <= 8;
+    }
 
-      allow get, list: if isCurrentUser(resource.data.userId) || isAdmin();
-      allow update: if isAdmin()
+    function isPendingCorrection(data) {
+      return data.status == 'PENDING'
+        && data.decidedAt == null
+        && data.decidedById == null;
+    }
+
+    function isApprovedCorrection(data) {
+      return isAdmin()
+        && data.status == 'APPROVED'
+        && data.decidedAt == request.time
+        && data.decidedById == request.auth.uid;
+    }
+
+    function canCreateCorrection() {
+      let correction = request.resource.data;
+      return isSignedIn()
+        && hasValidCorrectionFields(correction)
+        && correction.requestedById == request.auth.uid
+        && canReadUserData(correction.userId)
+        && isActiveProfile(correction.userId)
+        && correction.requestedAt == request.time
+        && isOpenPeriod(correction.userId, correction.monthKey)
+        && (
+          isPendingCorrection(correction)
+          || isApprovedCorrection(correction)
+        );
+    }
+
+    function canDecideCorrection() {
+      return isAdmin()
         && resource.data.status == 'PENDING'
         && request.resource.data.status in ['APPROVED', 'REJECTED']
         && request.resource.data.decidedAt == request.time
@@ -177,12 +156,34 @@ service cloud.firestore {
           'decidedById'
         ])
         && isOpenPeriod(resource.data.userId, resource.data.monthKey);
+    }
 
+    match /profiles/{userId} {
+      allow create: if isCurrentUser(userId)
+        && isValidNewProfile(request.resource.data);
+
+      allow get: if canReadUserData(userId);
+      allow list: if isAdmin();
+      allow update: if canActivateProfile();
+      allow delete: if false;
+    }
+
+    match /timeEntries/{entryId} {
+      allow create: if canCreateTimeEntry();
+      allow get, list: if canReadUserData(resource.data.userId);
+      allow update: if canUpdateTimeEntry();
+      allow delete: if false;
+    }
+
+    match /timeEntryCorrections/{correctionId} {
+      allow create: if canCreateCorrection();
+      allow get, list: if canReadUserData(resource.data.userId);
+      allow update: if canDecideCorrection();
       allow delete: if false;
     }
 
     match /profiles/{userId}/timePeriods/{monthKey} {
-      allow get, list: if isCurrentUser(userId) || isAdmin();
+      allow get, list: if canReadUserData(userId);
       allow create, update, delete: if false;
     }
   }

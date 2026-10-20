@@ -19,7 +19,7 @@
       ]
     },
     {
-      "collectionGroup": "timeEntryAdjustments",
+      "collectionGroup": "timeEntryCorrections",
       "queryScope": "COLLECTION",
       "fields": [
         {

@@ -3,9 +3,8 @@ import type { MonthlyTimeEntryDay } from '@/application/time-entries/time-entry-
 import { Alert } from '@/ui/components/Alert';
 import { Button } from '@/ui/components/Button';
 import { FeedbackMessage } from '@/ui/components/FeedbackMessage';
-import { useTimeEntryAdjustment, useTimeEntryHistory } from '@/ui/composition';
-import { TimeEntryAdjustmentDialog } from '@/ui/time-entry-history/TimeEntryAdjustmentDialog';
-import { TimeEntryAdjustmentReviewDialog } from '@/ui/time-entry-history/TimeEntryAdjustmentReviewDialog';
+import { useTimeEntryCorrection, useTimeEntryHistory } from '@/ui/composition';
+import { TimeEntryCorrectionDialog } from '@/ui/time-entry-history/TimeEntryCorrectionDialog';
 import { MonthSelector } from '@/ui/time-entry-history/MonthSelector';
 import { TimeEntryHistoryList } from '@/ui/time-entry-history/TimeEntryHistoryList';
 
@@ -15,37 +14,39 @@ interface TimeEntryHistoryProps {
   userId: string;
 }
 
-type OpenDialog = { day: MonthlyTimeEntryDay; type: 'ADJUST' | 'REVIEW' } | null;
-
 export function TimeEntryHistory({
   canApplyDirectly,
   requestedById,
   userId,
 }: TimeEntryHistoryProps) {
   const history = useTimeEntryHistory(userId);
-  const adjustment = useTimeEntryAdjustment({ requestedById, userId });
-  const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
+  const correction = useTimeEntryCorrection({ requestedById, userId });
+  const [selectedDay, setSelectedDay] = useState<MonthlyTimeEntryDay | null>(null);
 
-  function openAdjustment(day: MonthlyTimeEntryDay) {
-    adjustment.resetFeedback();
-    setOpenDialog({ day, type: 'ADJUST' });
+  function openCorrections(day: MonthlyTimeEntryDay) {
+    correction.resetFeedback();
+    setSelectedDay(day);
   }
 
   function closeDialog() {
-    if (adjustment.isSubmitting) return;
-    setOpenDialog(null);
+    if (correction.isSubmitting) return;
+    setSelectedDay(null);
   }
 
-  async function submitAdjustments(requests: Parameters<typeof adjustment.submitAll>[0]) {
+  async function submitCorrection(
+    proposedEntries: Parameters<typeof correction.request>[0]['proposedEntries'],
+  ) {
+    if (!selectedDay) return false;
+    const input = { dayKey: selectedDay.dayKey, proposedEntries };
     const succeeded = canApplyDirectly
-      ? await adjustment.applyAll(requests)
-      : await adjustment.submitAll(requests);
+      ? await correction.apply(input)
+      : await correction.request(input);
     if (succeeded) history.load();
     return succeeded;
   }
 
-  async function decideAdjustments(decisions: Parameters<typeof adjustment.decideAll>[0]) {
-    const succeeded = await adjustment.decideAll(decisions);
+  async function decideCorrection(id: string, status: 'APPROVED' | 'REJECTED') {
+    const succeeded = await correction.decide(id, status);
     if (succeeded) history.load();
     return succeeded;
   }
@@ -67,42 +68,27 @@ export function TimeEntryHistory({
         </>
       )}
 
-      {adjustment.successMessage && <Alert variant="success">{adjustment.successMessage}</Alert>}
+      {correction.successMessage && <Alert variant="success">{correction.successMessage}</Alert>}
 
       {!history.isLoading && !history.hasError && (
         <TimeEntryHistoryList
-          adjustments={history.adjustments}
+          corrections={history.corrections}
           canApplyDirectly={canApplyDirectly}
           days={history.days}
-          onAdjust={openAdjustment}
-          onReview={(day) => {
-            adjustment.resetFeedback();
-            setOpenDialog({ day, type: 'REVIEW' });
-          }}
+          onOpenCorrections={openCorrections}
         />
       )}
 
-      {openDialog?.type === 'ADJUST' && (
-        <TimeEntryAdjustmentDialog
-          adjustments={history.adjustments.filter((item) => item.dayKey === openDialog.day.dayKey)}
-          day={openDialog.day}
-          errorMessage={adjustment.errorMessage}
-          isDirectAdjustment={canApplyDirectly}
-          isSubmitting={adjustment.isSubmitting}
-          onCancel={closeDialog}
-          onSubmit={submitAdjustments}
-        />
-      )}
-
-      {openDialog?.type === 'REVIEW' && (
-        <TimeEntryAdjustmentReviewDialog
-          adjustments={history.adjustments.filter((item) => item.dayKey === openDialog.day.dayKey)}
-          canDecide={canApplyDirectly}
-          dayKey={openDialog.day.dayKey}
-          errorMessage={adjustment.errorMessage}
-          isSubmitting={adjustment.isSubmitting}
+      {selectedDay && (
+        <TimeEntryCorrectionDialog
+          canApplyDirectly={canApplyDirectly}
+          corrections={history.corrections.filter((item) => item.dayKey === selectedDay.dayKey)}
+          day={selectedDay}
+          errorMessage={correction.errorMessage}
+          isSubmitting={correction.isSubmitting}
           onClose={closeDialog}
-          onSubmit={decideAdjustments}
+          onDecision={decideCorrection}
+          onSubmit={submitCorrection}
         />
       )}
     </>

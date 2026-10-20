@@ -4,15 +4,14 @@ import { formatBusinessShortTime } from '@/ui/formatters/business-time';
 
 interface TimeEntryBadgeProps {
   entry: TimeEntry;
-  hasPendingAdjustment?: boolean;
 }
 
-export function TimeEntryBadge({ entry, hasPendingAdjustment = false }: TimeEntryBadgeProps) {
+export function TimeEntryBadge({ entry }: TimeEntryBadgeProps) {
   const time = formatBusinessShortTime(entry.recordedAt);
 
   return (
-    <span title={hasPendingAdjustment ? 'Solicitação pendente' : undefined}>
-      <Badge variant={hasPendingAdjustment ? 'warning' : 'neutral'}>
+    <span>
+      <Badge variant="neutral">
         <time dateTime={entry.recordedAt.toISOString()}>{time}</time>
       </Badge>
     </span>

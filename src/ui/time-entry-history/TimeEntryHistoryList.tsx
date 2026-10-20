@@ -1,30 +1,28 @@
 import type { MonthlyTimeEntryDay } from '@/application/time-entries/time-entry-service';
-import type { TimeEntryAdjustment } from '@/domain/time-entry-adjustment';
+import type { TimeEntryCorrection } from '@/domain/time-entry-correction';
 import { Button } from '@/ui/components/Button';
 import { DataList, DataListBody, DataListHeader, DataListRow } from '@/ui/components/DataList';
 import { formatBusinessDayKey, formatWorkedDuration } from '@/ui/formatters/business-time';
 import { TimeEntryBadge } from '@/ui/time-entry-history/TimeEntryBadge';
 
 interface TimeEntryHistoryListProps {
-  adjustments: TimeEntryAdjustment[];
+  corrections: TimeEntryCorrection[];
   canApplyDirectly: boolean;
   days: MonthlyTimeEntryDay[];
-  onAdjust: (day: MonthlyTimeEntryDay) => void;
-  onReview: (day: MonthlyTimeEntryDay) => void;
+  onOpenCorrections: (day: MonthlyTimeEntryDay) => void;
 }
 
-function countPendingAdjustments(adjustments: TimeEntryAdjustment[], dayKey: string) {
-  return adjustments.filter(
-    (adjustment) => adjustment.dayKey === dayKey && adjustment.status === 'PENDING',
-  ).length;
+function hasPendingCorrection(corrections: TimeEntryCorrection[], dayKey: string) {
+  return corrections.some(
+    (correction) => correction.dayKey === dayKey && correction.status === 'PENDING',
+  );
 }
 
 export function TimeEntryHistoryList({
-  adjustments,
+  corrections,
   canApplyDirectly,
   days,
-  onAdjust,
-  onReview,
+  onOpenCorrections,
 }: TimeEntryHistoryListProps) {
   return (
     <DataList>
@@ -53,15 +51,7 @@ export function TimeEntryHistoryList({
             {day.entries.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {day.entries.map((entry) => (
-                  <TimeEntryBadge
-                    entry={entry}
-                    hasPendingAdjustment={adjustments.some(
-                      (adjustment) =>
-                        adjustment.status === 'PENDING' &&
-                        adjustment.targetTimeEntryId === entry.id,
-                    )}
-                    key={entry.id}
-                  />
+                  <TimeEntryBadge entry={entry} key={entry.id} />
                 ))}
               </div>
             ) : (
@@ -76,28 +66,17 @@ export function TimeEntryHistoryList({
               {!day.isFuture && (
                 <Button
                   onClick={() => {
-                    onAdjust(day);
+                    onOpenCorrections(day);
                   }}
                   size="small"
                   type="button"
                   variant="secondary"
                 >
-                  {canApplyDirectly ? 'Novo ajuste' : 'Solicitar ajuste'}
-                </Button>
-              )}
-              {!day.isFuture && (
-                <Button
-                  disabled={!adjustments.some((adjustment) => adjustment.dayKey === day.dayKey)}
-                  onClick={() => {
-                    onReview(day);
-                  }}
-                  size="small"
-                  type="button"
-                  variant="secondary"
-                >
-                  {canApplyDirectly && countPendingAdjustments(adjustments, day.dayKey) > 0
-                    ? `Revisar (${String(countPendingAdjustments(adjustments, day.dayKey))})`
-                    : 'Ver solicitações'}
+                  {hasPendingCorrection(corrections, day.dayKey)
+                    ? canApplyDirectly
+                      ? 'Revisar (1)'
+                      : 'Correção pendente'
+                    : 'Correções'}
                 </Button>
               )}
             </div>
