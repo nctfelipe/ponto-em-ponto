@@ -18,8 +18,8 @@ export function TimeClockCard({
   onRequestRecord,
 }: TimeClockCardProps) {
   return (
-    <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-      <p className="text-sm font-medium text-slate-600 first-letter:uppercase">
+    <section className="rounded-2xl bg-surface p-5 shadow-sm ring-1 ring-border sm:p-6">
+      <p className="text-sm font-medium text-content-secondary first-letter:uppercase">
         {currentDateLabel}
       </p>
       <TimeEntryTimeline entries={entries} />

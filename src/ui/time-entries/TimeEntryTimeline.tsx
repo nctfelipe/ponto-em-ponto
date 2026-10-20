@@ -23,7 +23,7 @@ export function TimeEntryTimeline({ entries }: TimeEntryTimelineProps) {
           >
             {entry ? (
               <time
-                className="grid size-full place-items-center rounded-full bg-blue-50 font-semibold tabular-nums text-blue-700 ring-1 ring-blue-100 text-[clamp(0.625rem,2.75vw,0.875rem)]"
+                className="grid size-full place-items-center rounded-full bg-primary-subtle font-semibold tabular-nums text-primary ring-1 ring-primary/15 text-[clamp(0.625rem,2.75vw,0.875rem)]"
                 dateTime={entry.recordedAt.toISOString()}
               >
                 {formatBusinessShortTime(entry.recordedAt)}
@@ -31,7 +31,7 @@ export function TimeEntryTimeline({ entries }: TimeEntryTimelineProps) {
             ) : (
               <span
                 aria-hidden="true"
-                className="block size-full rounded-full bg-slate-100 ring-1 ring-slate-200"
+                className="block size-full rounded-full bg-surface-muted ring-1 ring-border"
               />
             )}
           </li>

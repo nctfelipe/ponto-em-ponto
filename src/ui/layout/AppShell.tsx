@@ -9,9 +9,9 @@ interface AppShellProps {
 
 export function AppShell({ navigationItems, onSignOut }: AppShellProps) {
   return (
-    <main className="flex min-h-svh flex-col bg-slate-50">
-      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
-        <h1 className="text-xl font-semibold text-slate-950">Ponto em Ponto</h1>
+    <main className="flex min-h-svh flex-col bg-background">
+      <header className="flex items-center justify-between border-b border-border bg-surface px-6 py-4">
+        <h1 className="text-xl font-semibold text-content">Ponto em Ponto</h1>
         <Button onClick={() => void onSignOut()} type="button" variant="secondary">
           Sair
         </Button>
