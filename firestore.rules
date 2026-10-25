@@ -19,8 +19,8 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/profiles/$(userId)).data.status == 'ACTIVE';
     }
 
-    function isOpenPeriod(userId, monthKey) {
-      let period = /databases/$(database)/documents/profiles/$(userId)/timePeriods/$(monthKey);
+    function isOpenPeriod(monthKey) {
+      let period = /databases/$(database)/documents/timePeriods/$(monthKey);
       return !exists(period) || get(period).data.status == 'OPEN';
     }
 
@@ -75,6 +75,7 @@ service cloud.firestore {
         && hasValidTimeEntryFields(entry)
         && isActiveProfile(entry.userId)
         && entry.status == 'ACTIVE'
+        && isOpenPeriod(entry.monthKey)
         && (
           isAdmin()
           || (isCurrentUser(entry.userId) && entry.recordedAt == request.time)
@@ -85,6 +86,8 @@ service cloud.firestore {
       return isAdmin()
         && hasValidTimeEntryFields(request.resource.data)
         && request.resource.data.userId == resource.data.userId
+        && isOpenPeriod(resource.data.monthKey)
+        && isOpenPeriod(request.resource.data.monthKey)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'recordedAt',
           'dayKey',
@@ -137,7 +140,7 @@ service cloud.firestore {
         && canReadUserData(correction.userId)
         && isActiveProfile(correction.userId)
         && correction.requestedAt == request.time
-        && isOpenPeriod(correction.userId, correction.monthKey)
+        && isOpenPeriod(correction.monthKey)
         && (
           isPendingCorrection(correction)
           || isApprovedCorrection(correction)
@@ -155,7 +158,20 @@ service cloud.firestore {
           'decidedAt',
           'decidedById'
         ])
-        && isOpenPeriod(resource.data.userId, resource.data.monthKey);
+        && isOpenPeriod(resource.data.monthKey);
+    }
+
+    function canCloseTimePeriod() {
+      let period = request.resource.data;
+      return isAdmin()
+        && period.keys().hasOnly([
+          'status',
+          'closedAt',
+          'closedById'
+        ])
+        && period.status == 'CLOSED'
+        && period.closedAt == request.time
+        && period.closedById == request.auth.uid;
     }
 
     match /profiles/{userId} {
@@ -182,9 +198,10 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    match /profiles/{userId}/timePeriods/{monthKey} {
-      allow get, list: if canReadUserData(userId);
-      allow create, update, delete: if false;
+    match /timePeriods/{monthKey} {
+      allow get, list: if isSignedIn();
+      allow create: if canCloseTimePeriod();
+      allow update, delete: if false;
     }
   }
 }

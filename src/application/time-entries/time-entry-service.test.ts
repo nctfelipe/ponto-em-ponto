@@ -7,6 +7,8 @@ import type {
   NewTimeEntry,
   TimeEntryRepository,
 } from '@/application/time-entries/time-entry-repository';
+import type { TimePeriodRepository } from '@/application/time-periods/time-period-repository';
+import { ClosedTimePeriodError } from '@/application/time-periods/time-period-service';
 import type { TimeEntry } from '@/domain/time-entry';
 
 function createTimeEntry(id: string, recordedAt: string): TimeEntry {
@@ -55,6 +57,27 @@ class FakeTimeEntryRepository implements TimeEntryRepository {
   }
 }
 
+class FakeTimePeriodRepository implements TimePeriodRepository {
+  closed = false;
+
+  close() {
+    return Promise.resolve();
+  }
+
+  find(monthKey: string) {
+    return Promise.resolve({
+      closedAt: this.closed ? new Date('2026-06-01T12:00:00.000Z') : null,
+      closedById: this.closed ? 'admin-1' : null,
+      monthKey,
+      status: this.closed ? ('CLOSED' as const) : ('OPEN' as const),
+    });
+  }
+}
+
+function createService(repository: TimeEntryRepository, periods = new FakeTimePeriodRepository()) {
+  return new DefaultTimeEntryService(repository, periods);
+}
+
 describe('DefaultTimeEntryService', () => {
   const now = new Date('2026-05-15T15:00:00.000Z');
 
@@ -63,7 +86,7 @@ describe('DefaultTimeEntryService', () => {
       createTimeEntry('second', '2026-05-15T11:00:00.000Z'),
       createTimeEntry('first', '2026-05-15T09:00:00.000Z'),
     ]);
-    const service = new DefaultTimeEntryService(repository);
+    const service = createService(repository);
 
     const result = await service.findToday('user-1', now);
 
@@ -77,7 +100,7 @@ describe('DefaultTimeEntryService', () => {
       [createTimeEntry('later', '2026-05-15T13:00:00.000Z')],
       createTimeEntry('new-entry', '2026-05-15T12:00:00.000Z'),
     );
-    const service = new DefaultTimeEntryService(repository);
+    const service = createService(repository);
 
     const result = await service.register('user-1', now);
 
@@ -95,7 +118,7 @@ describe('DefaultTimeEntryService', () => {
       ),
     );
     const repository = new FakeTimeEntryRepository(entries);
-    const service = new DefaultTimeEntryService(repository);
+    const service = createService(repository);
 
     await expect(service.findToday('user-1', now)).resolves.toMatchObject({
       canRegister: false,
@@ -116,7 +139,7 @@ describe('DefaultTimeEntryService', () => {
       ),
     );
     const repository = new FakeTimeEntryRepository([removedEntry, ...activeEntries]);
-    const service = new DefaultTimeEntryService(repository);
+    const service = createService(repository);
 
     await expect(service.findToday('user-1', now)).resolves.toMatchObject({
       canRegister: true,
@@ -148,7 +171,7 @@ describe('DefaultTimeEntryService', () => {
         monthKey: '2028-02',
       },
     ]);
-    const service = new DefaultTimeEntryService(repository);
+    const service = createService(repository);
 
     const result = await service.findMonth(
       'user-1',
@@ -183,7 +206,7 @@ describe('DefaultTimeEntryService', () => {
       createTimeEntry('first', '2026-05-15T11:00:00.000Z'),
       createTimeEntry('second', '2026-05-15T15:00:00.000Z'),
     ]);
-    const service = new DefaultTimeEntryService(repository);
+    const service = createService(repository);
 
     const result = await service.findMonth('user-1', '2026-05', now);
 
@@ -191,5 +214,15 @@ describe('DefaultTimeEntryService', () => {
       dayKey: '2026-05-15',
       workedMilliseconds: 4 * 60 * 60 * 1000,
     });
+  });
+
+  it('prevents writes in a closed period', async () => {
+    const repository = new FakeTimeEntryRepository([]);
+    const periods = new FakeTimePeriodRepository();
+    periods.closed = true;
+    const service = createService(repository, periods);
+
+    await expect(service.register('user-1', now)).rejects.toBeInstanceOf(ClosedTimePeriodError);
+    expect(repository.createInputs).toHaveLength(0);
   });
 });

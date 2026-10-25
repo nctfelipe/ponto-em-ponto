@@ -1,5 +1,7 @@
 import { getBusinessDateKeys } from '@/application/time-entries/business-time';
 import type { TimeEntryRepository } from '@/application/time-entries/time-entry-repository';
+import type { TimePeriodRepository } from '@/application/time-periods/time-period-repository';
+import { ClosedTimePeriodError } from '@/application/time-periods/time-period-service';
 import type { TimeEntry } from '@/domain/time-entry';
 
 export const MAX_DAILY_TIME_ENTRIES = 8;
@@ -100,10 +102,12 @@ export interface TimeEntryService {
 }
 
 export class DefaultTimeEntryService implements TimeEntryService {
+  private readonly periodRepository: TimePeriodRepository;
   private readonly repository: TimeEntryRepository;
 
-  constructor(repository: TimeEntryRepository) {
+  constructor(repository: TimeEntryRepository, periodRepository: TimePeriodRepository) {
     this.repository = repository;
+    this.periodRepository = periodRepository;
   }
 
   async findMonth(userId: string, monthKey: string, now: Date) {
@@ -119,6 +123,9 @@ export class DefaultTimeEntryService implements TimeEntryService {
 
   async register(userId: string, now: Date) {
     const { dayKey, monthKey } = getBusinessDateKeys(now);
+    const period = await this.periodRepository.find(monthKey);
+    if (period.status === 'CLOSED') throw new ClosedTimePeriodError();
+
     const currentEntries = await this.repository.findByUserAndDay(userId, dayKey);
 
     const activeEntries = currentEntries.filter((entry) => entry.status === 'ACTIVE');

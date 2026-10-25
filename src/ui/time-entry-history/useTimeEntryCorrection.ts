@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  ClosedTimePeriodError,
   InvalidTimeEntryCorrectionError,
   OutdatedTimeEntryCorrectionError,
   PendingTimeEntryCorrectionError,
@@ -8,6 +7,7 @@ import {
   type SubmitTimeEntryCorrectionInput,
   type TimeEntryCorrectionService,
 } from '@/application/time-entry-corrections/time-entry-correction-service';
+import { ClosedTimePeriodError } from '@/application/time-periods/time-period-service';
 
 interface Dependencies {
   correctionService: TimeEntryCorrectionService;

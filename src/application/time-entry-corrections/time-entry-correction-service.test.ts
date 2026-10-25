@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TimeEntryRepository } from '@/application/time-entries/time-entry-repository';
 import {
-  ClosedTimePeriodError,
   InvalidTimeEntryCorrectionError,
   OutdatedTimeEntryCorrectionError,
   PendingTimeEntryCorrectionError,
@@ -12,6 +11,7 @@ import type {
   TimeEntryCorrectionRepository,
 } from '@/application/time-entry-corrections/time-entry-correction-repository';
 import type { TimePeriodRepository } from '@/application/time-periods/time-period-repository';
+import { ClosedTimePeriodError } from '@/application/time-periods/time-period-service';
 import type { TimeEntryCorrection } from '@/domain/time-entry-correction';
 import type { TimeEntry } from '@/domain/time-entry';
 
@@ -73,12 +73,25 @@ class FakeCorrectionRepository implements TimeEntryCorrectionRepository {
       ) ?? null,
     );
   }
+  findPendingByMonth(monthKey: string) {
+    return Promise.resolve(
+      this.corrections.filter((item) => item.monthKey === monthKey && item.status === 'PENDING'),
+    );
+  }
 }
 
 class FakePeriodRepository implements TimePeriodRepository {
   closed = false;
-  isClosed() {
-    return Promise.resolve(this.closed);
+  close() {
+    return Promise.resolve();
+  }
+  find(monthKey: string) {
+    return Promise.resolve({
+      closedAt: this.closed ? new Date('2026-10-01T12:00:00.000Z') : null,
+      closedById: this.closed ? 'admin-1' : null,
+      monthKey,
+      status: this.closed ? ('CLOSED' as const) : ('OPEN' as const),
+    });
   }
 }
 

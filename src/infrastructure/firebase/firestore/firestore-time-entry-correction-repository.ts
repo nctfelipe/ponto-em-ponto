@@ -156,6 +156,25 @@ export class FirestoreTimeEntryCorrectionRepository implements TimeEntryCorrecti
     }
   }
 
+  async findPendingByMonth(monthKey: string) {
+    try {
+      const snapshot = await getDocs(
+        query(
+          collection(this.firestore, 'timeEntryCorrections'),
+          where('monthKey', '==', monthKey),
+          where('status', '==', 'PENDING'),
+        ),
+      );
+      return snapshot.docs.map((item) =>
+        toCorrection(item.id, item.data() as TimeEntryCorrectionDocument),
+      );
+    } catch (error: unknown) {
+      throw new TimeEntryCorrectionRepositoryError('Unable to read pending corrections.', {
+        cause: error,
+      });
+    }
+  }
+
   private addCorrection(
     batch: WriteBatch,
     correction: NewTimeEntryCorrection,

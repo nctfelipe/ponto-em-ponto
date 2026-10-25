@@ -17,10 +17,12 @@ const identityProvider = new FirebaseIdentityProvider();
 const profileRepository = new FirestoreProfileRepository();
 const sessionService = new DefaultSessionService(identityProvider, profileRepository);
 const timeEntryRepository = new FirestoreTimeEntryRepository();
-const timeEntryService = new DefaultTimeEntryService(timeEntryRepository);
+const timeEntryCorrectionRepository = new FirestoreTimeEntryCorrectionRepository();
+const timePeriodRepository = new FirestoreTimePeriodRepository();
+const timeEntryService = new DefaultTimeEntryService(timeEntryRepository, timePeriodRepository);
 const timeEntryCorrectionService = new TimeEntryCorrectionService(
-  new FirestoreTimeEntryCorrectionRepository(),
-  new FirestoreTimePeriodRepository(),
+  timeEntryCorrectionRepository,
+  timePeriodRepository,
   timeEntryRepository,
 );
 
