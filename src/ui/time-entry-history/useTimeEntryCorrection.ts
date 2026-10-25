@@ -23,7 +23,9 @@ function getErrorMessage(error: unknown) {
   if (error instanceof PendingTimeEntryCorrectionError) {
     return 'Este dia já possui uma correção pendente.';
   }
-  if (error instanceof InvalidTimeEntryCorrectionError) return 'Revise os horários informados.';
+  if (error instanceof InvalidTimeEntryCorrectionError) {
+    return 'A correção deve conter horários válidos e uma quantidade par de batidas.';
+  }
   if (error instanceof OutdatedTimeEntryCorrectionError) {
     return 'As batidas foram alteradas depois da solicitação. Revise a correção novamente.';
   }

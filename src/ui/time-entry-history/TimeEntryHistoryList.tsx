@@ -3,7 +3,9 @@ import type { TimeEntryCorrection } from '@/domain/time-entry-correction';
 import { Button } from '@/ui/components/Button';
 import { DataList, DataListBody, DataListHeader, DataListRow } from '@/ui/components/DataList';
 import { formatBusinessDayKey, formatWorkedDuration } from '@/ui/formatters/business-time';
+import { DayStatusIndicator } from '@/ui/time-entry-history/DayStatusIndicator';
 import { TimeEntryBadge } from '@/ui/time-entry-history/TimeEntryBadge';
+import { getDayStatus } from '@/ui/time-entry-history/day-status';
 
 interface TimeEntryHistoryListProps {
   corrections: TimeEntryCorrection[];
@@ -26,20 +28,25 @@ export function TimeEntryHistoryList({
 }: TimeEntryHistoryListProps) {
   return (
     <DataList>
-      <DataListHeader className="grid-cols-[minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem_13rem]">
+      <DataListHeader className="grid-cols-[1.25rem_minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem_13rem] text-center">
+        <span aria-label="Status" />
         <span>Data</span>
         <span>Batidas</span>
-        <span className="text-right">Total</span>
-        <span className="text-right">Ações</span>
+        <span>Total</span>
+        <span>Ações</span>
       </DataListHeader>
 
       <DataListBody>
         {days.map((day) => (
           <DataListRow
-            className={`md:grid-cols-[minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem_13rem] ${day.isFuture ? 'bg-background opacity-60' : ''}`}
+            className={`relative md:grid-cols-[1.25rem_minmax(8rem,0.8fr)_minmax(16rem,2fr)_6rem_13rem] ${day.isFuture ? 'bg-background opacity-60' : ''}`}
             key={day.dayKey}
           >
-            <div className="flex items-center justify-between gap-4 md:block">
+            <div className="absolute left-4 top-4 flex h-5 items-center justify-center md:static">
+              <DayStatusIndicator status={getDayStatus(day, corrections)} />
+            </div>
+
+            <div className="flex items-center justify-between gap-4 pl-7 md:block md:pl-0 md:text-center">
               <time className="font-medium capitalize" dateTime={day.dayKey}>
                 {formatBusinessDayKey(day.dayKey)}
               </time>
@@ -49,20 +56,20 @@ export function TimeEntryHistoryList({
             </div>
 
             {day.entries.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 md:justify-center">
                 {day.entries.map((entry) => (
                   <TimeEntryBadge entry={entry} key={entry.id} />
                 ))}
               </div>
             ) : (
-              <span className="text-content-muted">Sem registros</span>
+              <span className="text-content-muted md:text-center">Sem registros</span>
             )}
 
-            <span className="hidden text-right font-medium md:block">
+            <span className="hidden text-center font-medium md:block">
               {formatWorkedDuration(day.workedMilliseconds)}
             </span>
 
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2 md:justify-center">
               {!day.isFuture && (
                 <Button
                   onClick={() => {
@@ -74,7 +81,7 @@ export function TimeEntryHistoryList({
                 >
                   {hasPendingCorrection(corrections, day.dayKey)
                     ? canApplyDirectly
-                      ? 'Revisar (1)'
+                      ? 'Revisar'
                       : 'Correção pendente'
                     : 'Correções'}
                 </Button>

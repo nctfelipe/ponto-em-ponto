@@ -102,7 +102,10 @@ function pendingCorrection(): TimeEntryCorrection {
     id: 'correction-1',
     monthKey: entry.monthKey,
     previousEntries: [{ recordedAt: entry.recordedAt, timeEntryId: entry.id }],
-    proposedEntries: [{ recordedAt: new Date('2026-10-19T11:05:00.000Z'), timeEntryId: entry.id }],
+    proposedEntries: [
+      { recordedAt: new Date('2026-10-19T11:05:00.000Z'), timeEntryId: entry.id },
+      { recordedAt: new Date('2026-10-19T15:00:00.000Z'), timeEntryId: null },
+    ],
     requestedAt: new Date('2026-10-19T12:00:00.000Z'),
     requestedById: entry.userId,
     status: 'PENDING',
@@ -117,14 +120,20 @@ describe('TimeEntryCorrectionService', () => {
 
     await service.request({
       dayKey: entry.dayKey,
-      proposedEntries: [{ recordedAt: proposed, timeEntryId: entry.id }],
+      proposedEntries: [
+        { recordedAt: proposed, timeEntryId: entry.id },
+        { recordedAt: new Date('2026-10-19T15:00:00.000Z'), timeEntryId: null },
+      ],
       requestedById: entry.userId,
       userId: entry.userId,
     });
 
     expect(corrections.created[0]).toMatchObject({
       previousEntries: [{ recordedAt: entry.recordedAt, timeEntryId: entry.id }],
-      proposedEntries: [{ recordedAt: proposed, timeEntryId: entry.id }],
+      proposedEntries: [
+        { recordedAt: proposed, timeEntryId: entry.id },
+        { recordedAt: new Date('2026-10-19T15:00:00.000Z'), timeEntryId: null },
+      ],
     });
   });
 
@@ -153,6 +162,19 @@ describe('TimeEntryCorrectionService', () => {
       service.request({
         dayKey: entry.dayKey,
         proposedEntries,
+        requestedById: entry.userId,
+        userId: entry.userId,
+      }),
+    ).rejects.toBeInstanceOf(InvalidTimeEntryCorrectionError);
+  });
+
+  it('prevents corrections that keep an odd number of entries', async () => {
+    const { service } = createService();
+
+    await expect(
+      service.request({
+        dayKey: entry.dayKey,
+        proposedEntries: [{ recordedAt: entry.recordedAt, timeEntryId: entry.id }],
         requestedById: entry.userId,
         userId: entry.userId,
       }),

@@ -80,6 +80,7 @@ export class TimeEntryCorrectionService {
     await this.ensureOpenPeriod(correction.userId, correction.monthKey);
 
     if (status === 'APPROVED') {
+      this.validateProposal(correction.dayKey, correction.proposedEntries);
       const current = toCorrectionEntries(
         await this.timeEntryRepository.findByUserAndDay(correction.userId, correction.dayKey),
       );
@@ -121,7 +122,9 @@ export class TimeEntryCorrectionService {
   }
 
   private validateProposal(dayKey: string, entries: CorrectionEntry[]) {
-    if (entries.length > MAX_DAILY_TIME_ENTRIES) throw new InvalidTimeEntryCorrectionError();
+    if (entries.length > MAX_DAILY_TIME_ENTRIES || entries.length % 2 !== 0) {
+      throw new InvalidTimeEntryCorrectionError();
+    }
 
     const ids = entries.flatMap(({ timeEntryId }) => (timeEntryId ? [timeEntryId] : []));
     if (new Set(ids).size !== ids.length) throw new InvalidTimeEntryCorrectionError();
