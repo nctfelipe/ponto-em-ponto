@@ -8,11 +8,11 @@ interface PageCardProps {
 
 export function PageCard({ children, eyebrow, title }: PageCardProps) {
   return (
-    <main className="grid min-h-svh place-items-center bg-slate-50 px-6 py-12">
-      <section className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+    <main className="grid min-h-svh place-items-center bg-background px-6 py-12">
+      <section className="w-full max-w-md rounded-2xl bg-surface p-8 shadow-sm ring-1 ring-border">
         <header>
-          {eyebrow && <p className="text-sm font-semibold text-blue-600">{eyebrow}</p>}
-          <h1 className="mt-2 text-2xl font-semibold text-slate-950">{title}</h1>
+          {eyebrow && <p className="text-sm font-semibold text-primary">{eyebrow}</p>}
+          <h1 className="mt-2 text-2xl font-semibold text-content">{title}</h1>
         </header>
         {children}
       </section>

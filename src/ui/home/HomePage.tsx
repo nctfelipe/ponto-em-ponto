@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert } from '@/ui/components/Alert';
 import { Button } from '@/ui/components/Button';
 import { ConfirmationDialog } from '@/ui/components/ConfirmationDialog';
+import { FeedbackMessage } from '@/ui/components/FeedbackMessage';
 import { PageContent } from '@/ui/components/PageContent';
 import { useTimeEntries } from '@/ui/composition';
 import { TimeClockCard } from '@/ui/time-entries/TimeClockCard';
@@ -33,7 +34,9 @@ export function HomePage({ userId }: HomePageProps) {
 
       {timeEntries.errorMessage && <Alert variant="error">{timeEntries.errorMessage}</Alert>}
 
-      {timeEntries.isLoading && <p role="status">Carregando batidas...</p>}
+      {timeEntries.isLoading && (
+        <FeedbackMessage variant="loading">Carregando batidas...</FeedbackMessage>
+      )}
 
       {timeEntries.errorMessage && !timeEntries.isLoading && (
         <Button onClick={timeEntries.load} type="button" variant="secondary">

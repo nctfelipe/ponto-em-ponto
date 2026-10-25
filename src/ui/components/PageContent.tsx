@@ -14,7 +14,7 @@ const widthClasses: Record<NonNullable<PageContentProps['width']>, string> = {
 export function PageContent({ children, title, width = 'full' }: PageContentProps) {
   return (
     <section className={`space-y-4 ${widthClasses[width]}`}>
-      <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
+      <h2 className="text-xl font-semibold text-content">{title}</h2>
       {children}
     </section>
   );

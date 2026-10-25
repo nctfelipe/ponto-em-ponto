@@ -34,14 +34,14 @@ export function ConfirmationDialog({
     <dialog
       aria-describedby="confirmation-description"
       aria-labelledby="confirmation-title"
-      className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl bg-white p-6 shadow-xl backdrop:bg-slate-950/50"
+      className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl bg-surface p-6 shadow-xl backdrop:bg-content/50"
       onCancel={onCancel}
       ref={dialogRef}
     >
-      <h2 className="text-xl font-semibold text-slate-950" id="confirmation-title">
+      <h2 className="text-xl font-semibold text-content" id="confirmation-title">
         {title}
       </h2>
-      <p className="mt-3 text-sm leading-6 text-slate-600" id="confirmation-description">
+      <p className="mt-3 text-sm leading-6 text-content-secondary" id="confirmation-description">
         {description}
       </p>
       <div className="mt-6 grid grid-cols-2 gap-3">

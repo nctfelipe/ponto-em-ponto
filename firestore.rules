@@ -14,30 +14,37 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isActiveUser() {
+    function isActiveProfile(userId) {
       return isSignedIn()
-        && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.status == 'ACTIVE';
+        && get(/databases/$(database)/documents/profiles/$(userId)).data.status == 'ACTIVE';
     }
 
-    match /profiles/{userId} {
-      allow create: if isCurrentUser(userId)
-        && request.resource.data.keys().hasOnly([
+    function isOpenPeriod(userId, monthKey) {
+      let period = /databases/$(database)/documents/profiles/$(userId)/timePeriods/$(monthKey);
+      return !exists(period) || get(period).data.status == 'OPEN';
+    }
+
+    function canReadUserData(userId) {
+      return isCurrentUser(userId) || isAdmin();
+    }
+
+    function isValidNewProfile(data) {
+      return data.keys().hasOnly([
           'displayName',
           'email',
           'status',
           'createdAt',
           'updatedAt'
         ])
-        && request.resource.data.displayName is string
-        && request.resource.data.email == request.auth.token.email
-        && request.resource.data.status == 'PENDING'
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
+        && data.displayName is string
+        && data.email == request.auth.token.email
+        && data.status == 'PENDING'
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
 
-      allow get: if isCurrentUser(userId) || isAdmin();
-      allow list: if isAdmin();
-
-      allow update: if isAdmin()
+    function canActivateProfile() {
+      return isAdmin()
         && resource.data.status == 'PENDING'
         && request.resource.data.status == 'ACTIVE'
         && request.resource.data.updatedAt == request.time
@@ -45,26 +52,139 @@ service cloud.firestore {
           'status',
           'updatedAt'
         ]);
+    }
 
+    function hasValidTimeEntryFields(data) {
+      return data.keys().hasOnly([
+          'userId',
+          'recordedAt',
+          'dayKey',
+          'monthKey',
+          'status'
+        ])
+        && data.userId is string
+        && data.recordedAt is timestamp
+        && data.dayKey is string
+        && data.monthKey is string
+        && data.status in ['ACTIVE', 'REMOVED'];
+    }
+
+    function canCreateTimeEntry() {
+      let entry = request.resource.data;
+      return isSignedIn()
+        && hasValidTimeEntryFields(entry)
+        && isActiveProfile(entry.userId)
+        && entry.status == 'ACTIVE'
+        && (
+          isAdmin()
+          || (isCurrentUser(entry.userId) && entry.recordedAt == request.time)
+        );
+    }
+
+    function canUpdateTimeEntry() {
+      return isAdmin()
+        && hasValidTimeEntryFields(request.resource.data)
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'recordedAt',
+          'dayKey',
+          'monthKey',
+          'status'
+        ]);
+    }
+
+    function hasValidCorrectionFields(data) {
+      return data.keys().hasOnly([
+          'userId',
+          'requestedById',
+          'status',
+          'previousEntries',
+          'proposedEntries',
+          'dayKey',
+          'monthKey',
+          'requestedAt',
+          'decidedAt',
+          'decidedById'
+        ])
+        && data.userId is string
+        && data.requestedById is string
+        && data.dayKey is string
+        && data.monthKey is string
+        && data.previousEntries is list
+        && data.proposedEntries is list
+        && data.previousEntries.size() <= 8
+        && data.proposedEntries.size() <= 8;
+    }
+
+    function isPendingCorrection(data) {
+      return data.status == 'PENDING'
+        && data.decidedAt == null
+        && data.decidedById == null;
+    }
+
+    function isApprovedCorrection(data) {
+      return isAdmin()
+        && data.status == 'APPROVED'
+        && data.decidedAt == request.time
+        && data.decidedById == request.auth.uid;
+    }
+
+    function canCreateCorrection() {
+      let correction = request.resource.data;
+      return isSignedIn()
+        && hasValidCorrectionFields(correction)
+        && correction.requestedById == request.auth.uid
+        && canReadUserData(correction.userId)
+        && isActiveProfile(correction.userId)
+        && correction.requestedAt == request.time
+        && isOpenPeriod(correction.userId, correction.monthKey)
+        && (
+          isPendingCorrection(correction)
+          || isApprovedCorrection(correction)
+        );
+    }
+
+    function canDecideCorrection() {
+      return isAdmin()
+        && resource.data.status == 'PENDING'
+        && request.resource.data.status in ['APPROVED', 'REJECTED']
+        && request.resource.data.decidedAt == request.time
+        && request.resource.data.decidedById == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'decidedAt',
+          'decidedById'
+        ])
+        && isOpenPeriod(resource.data.userId, resource.data.monthKey);
+    }
+
+    match /profiles/{userId} {
+      allow create: if isCurrentUser(userId)
+        && isValidNewProfile(request.resource.data);
+
+      allow get: if canReadUserData(userId);
+      allow list: if isAdmin();
+      allow update: if canActivateProfile();
       allow delete: if false;
     }
 
     match /timeEntries/{entryId} {
-      allow create: if isActiveUser()
-        && request.resource.data.keys().hasOnly([
-          'userId',
-          'recordedAt',
-          'dayKey',
-          'monthKey'
-        ])
-        && isCurrentUser(request.resource.data.userId)
-        && request.resource.data.recordedAt == request.time
-        && request.resource.data.dayKey is string
-        && request.resource.data.monthKey is string;
+      allow create: if canCreateTimeEntry();
+      allow get, list: if canReadUserData(resource.data.userId);
+      allow update: if canUpdateTimeEntry();
+      allow delete: if false;
+    }
 
-      allow get, list: if isCurrentUser(resource.data.userId) || isAdmin();
+    match /timeEntryCorrections/{correctionId} {
+      allow create: if canCreateCorrection();
+      allow get, list: if canReadUserData(resource.data.userId);
+      allow update: if canDecideCorrection();
+      allow delete: if false;
+    }
 
-      allow update, delete: if false;
+    match /profiles/{userId}/timePeriods/{monthKey} {
+      allow get, list: if canReadUserData(userId);
+      allow create, update, delete: if false;
     }
   }
 }

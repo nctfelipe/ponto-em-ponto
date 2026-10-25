@@ -2,7 +2,10 @@ import type { Identity } from '@/application/identity/identity-provider';
 import { AppShell } from '@/ui/layout/AppShell';
 import type { NavigationItem } from '@/ui/layout/NavigationSidebar';
 
-const commonNavigation: NavigationItem[] = [{ label: 'Início', to: '/' }];
+const commonNavigation: NavigationItem[] = [
+  { label: 'Início', to: '/' },
+  { label: 'Histórico', to: '/time-entries' },
+];
 const adminNavigation: NavigationItem[] = [{ label: 'Usuários', to: '/users' }];
 
 interface AuthenticatedLayoutProps {

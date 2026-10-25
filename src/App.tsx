@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router';
+import { AdminTimeEntryHistoryPage } from '@/ui/admin/time-entries/AdminTimeEntryHistoryPage';
 import { UsersPage } from '@/ui/admin/users/UsersPage';
 import { AuthenticationPage } from '@/ui/authentication/AuthenticationPage';
 import { useSession } from '@/ui/composition';
@@ -7,6 +8,7 @@ import { LoadingPage } from '@/ui/feedback/LoadingPage';
 import { HomePage } from '@/ui/home/HomePage';
 import { AuthenticatedLayout } from '@/ui/layout/AuthenticatedLayout';
 import { PendingApprovalPage } from '@/ui/profile/PendingApprovalPage';
+import { TimeEntryHistoryPage } from '@/ui/time-entry-history/TimeEntryHistoryPage';
 
 function App() {
   const session = useSession();
@@ -61,7 +63,25 @@ function App() {
     <Routes>
       <Route element={<AuthenticatedLayout identity={identity} onSignOut={session.signOut} />}>
         <Route element={<HomePage userId={identity.id} />} index />
-        {identity.isAdmin && <Route element={<UsersPage />} path="users" />}
+        <Route
+          element={
+            <TimeEntryHistoryPage
+              canApplyDirectly={identity.isAdmin}
+              requestedById={identity.id}
+              userId={identity.id}
+            />
+          }
+          path="time-entries"
+        />
+        {identity.isAdmin && (
+          <>
+            <Route element={<UsersPage />} path="users" />
+            <Route
+              element={<AdminTimeEntryHistoryPage requestedById={identity.id} />}
+              path="users/:userId/time-entries"
+            />
+          </>
+        )}
       </Route>
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>

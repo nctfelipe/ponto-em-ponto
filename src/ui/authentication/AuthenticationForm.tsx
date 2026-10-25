@@ -3,7 +3,7 @@ import { AuthenticationModeSelector } from '@/ui/authentication/AuthenticationMo
 import type { AuthenticationMode } from '@/ui/authentication/useAuthenticationForm';
 import { Alert } from '@/ui/components/Alert';
 import { Button } from '@/ui/components/Button';
-import { TextField } from '@/ui/components/TextField';
+import { InputField } from '@/ui/components/InputField';
 
 interface AuthenticationFormProps {
   errorMessage: string | null;
@@ -28,11 +28,11 @@ export function AuthenticationForm({
 
       <form className="mt-6 space-y-4" onSubmit={(event) => void onSubmit(event)}>
         {mode === 'register' && (
-          <TextField autoComplete="name" label="Nome" name="displayName" required type="text" />
+          <InputField autoComplete="name" label="Nome" name="displayName" required type="text" />
         )}
 
-        <TextField autoComplete="email" label="E-mail" name="email" required type="email" />
-        <TextField
+        <InputField autoComplete="email" label="E-mail" name="email" required type="email" />
+        <InputField
           autoComplete={mode === 'authenticate' ? 'current-password' : 'new-password'}
           label="Senha"
           name="password"
@@ -41,7 +41,7 @@ export function AuthenticationForm({
         />
 
         {mode === 'register' && (
-          <TextField
+          <InputField
             autoComplete="new-password"
             label="Confirme a senha"
             name="passwordConfirmation"
