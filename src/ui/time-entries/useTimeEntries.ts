@@ -4,6 +4,7 @@ import {
   type DailyTimeEntries,
   type TimeEntryService,
 } from '@/application/time-entries/time-entry-service';
+import { ClosedTimePeriodError } from '@/application/time-periods/time-period-service';
 import { formatBusinessDate } from '@/ui/formatters/business-time';
 
 interface CreateUseTimeEntriesDependencies {
@@ -16,6 +17,7 @@ export function createUseTimeEntries({ timeEntryService }: CreateUseTimeEntriesD
       canRegister: true,
       date: new Date(),
       entries: [],
+      isPeriodClosed: false,
     }));
     const [isLoading, setIsLoading] = useState(true);
     const [isRegistering, setIsRegistering] = useState(false);
@@ -59,7 +61,9 @@ export function createUseTimeEntries({ timeEntryService }: CreateUseTimeEntriesD
         setErrorMessage(
           error instanceof DailyTimeEntryLimitError
             ? 'Os registros do dia já foram concluídos.'
-            : 'Não foi possível registrar o ponto. Tente novamente.',
+            : error instanceof ClosedTimePeriodError
+              ? 'Este mês está fechado para novos registros.'
+              : 'Não foi possível registrar o ponto. Tente novamente.',
         );
       } finally {
         setIsRegistering(false);
@@ -72,6 +76,7 @@ export function createUseTimeEntries({ timeEntryService }: CreateUseTimeEntriesD
       entries: dailyEntries.entries,
       errorMessage,
       isLoading,
+      isPeriodClosed: dailyEntries.isPeriodClosed,
       isRegistering,
       load,
       record,

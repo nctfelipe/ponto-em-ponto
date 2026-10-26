@@ -10,6 +10,7 @@ export interface DailyTimeEntries {
   canRegister: boolean;
   date: Date;
   entries: TimeEntry[];
+  isPeriodClosed: boolean;
 }
 
 export interface MonthlyTimeEntryDay {
@@ -31,15 +32,20 @@ export class DailyTimeEntryLimitError extends Error {
   }
 }
 
-function createDailyTimeEntries(date: Date, entries: TimeEntry[]): DailyTimeEntries {
+function createDailyTimeEntries(
+  date: Date,
+  entries: TimeEntry[],
+  isPeriodClosed = false,
+): DailyTimeEntries {
   const sortedEntries = entries
     .filter((entry) => entry.status === 'ACTIVE')
     .sort((left, right) => left.recordedAt.getTime() - right.recordedAt.getTime());
 
   return {
-    canRegister: sortedEntries.length < MAX_DAILY_TIME_ENTRIES,
+    canRegister: !isPeriodClosed && sortedEntries.length < MAX_DAILY_TIME_ENTRIES,
     date,
     entries: sortedEntries,
+    isPeriodClosed,
   };
 }
 
@@ -116,9 +122,12 @@ export class DefaultTimeEntryService implements TimeEntryService {
   }
 
   async findToday(userId: string, now: Date) {
-    const { dayKey } = getBusinessDateKeys(now);
-    const entries = await this.repository.findByUserAndDay(userId, dayKey);
-    return createDailyTimeEntries(now, entries);
+    const { dayKey, monthKey } = getBusinessDateKeys(now);
+    const [entries, period] = await Promise.all([
+      this.repository.findByUserAndDay(userId, dayKey),
+      this.periodRepository.find(monthKey),
+    ]);
+    return createDailyTimeEntries(now, entries, period.status === 'CLOSED');
   }
 
   async register(userId: string, now: Date) {

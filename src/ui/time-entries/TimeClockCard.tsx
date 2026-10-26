@@ -7,6 +7,7 @@ interface TimeClockCardProps {
   currentDateLabel: string;
   entries: TimeEntry[];
   isRegistering: boolean;
+  isPeriodClosed: boolean;
   onRequestRecord: () => void;
 }
 
@@ -15,6 +16,7 @@ export function TimeClockCard({
   currentDateLabel,
   entries,
   isRegistering,
+  isPeriodClosed,
   onRequestRecord,
 }: TimeClockCardProps) {
   return (
@@ -25,6 +27,7 @@ export function TimeClockCard({
       <TimeEntryTimeline entries={entries} />
       <LiveTimeEntryButton
         isAvailable={canRecord}
+        isPeriodClosed={isPeriodClosed}
         isRegistering={isRegistering}
         onClick={onRequestRecord}
       />

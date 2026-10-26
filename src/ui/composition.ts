@@ -39,6 +39,7 @@ export const useTimePeriod = createUseTimePeriod({ timePeriodService });
 export const useTimeEntryHistory = createUseTimeEntryHistory({
   correctionService: timeEntryCorrectionService,
   timeEntryService,
+  timePeriodService,
 });
 export const useTimeEntryCorrection = createUseTimeEntryCorrection({
   correctionService: timeEntryCorrectionService,

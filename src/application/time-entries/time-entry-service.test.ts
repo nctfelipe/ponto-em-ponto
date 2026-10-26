@@ -225,4 +225,16 @@ describe('DefaultTimeEntryService', () => {
     await expect(service.register('user-1', now)).rejects.toBeInstanceOf(ClosedTimePeriodError);
     expect(repository.createInputs).toHaveLength(0);
   });
+
+  it('marks the current day unavailable when its period is closed', async () => {
+    const repository = new FakeTimeEntryRepository([]);
+    const periods = new FakeTimePeriodRepository();
+    periods.closed = true;
+    const service = createService(repository, periods);
+
+    await expect(service.findToday('user-1', now)).resolves.toMatchObject({
+      canRegister: false,
+      isPeriodClosed: true,
+    });
+  });
 });

@@ -26,6 +26,7 @@ export function HomePage({ userId }: HomePageProps) {
         canRecord={timeEntries.canRecord}
         currentDateLabel={timeEntries.currentDateLabel}
         entries={timeEntries.entries}
+        isPeriodClosed={timeEntries.isPeriodClosed}
         isRegistering={timeEntries.isRegistering}
         onRequestRecord={() => {
           setIsConfirmationOpen(true);

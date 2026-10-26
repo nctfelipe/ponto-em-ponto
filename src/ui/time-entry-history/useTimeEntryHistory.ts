@@ -5,16 +5,19 @@ import type {
   TimeEntryService,
 } from '@/application/time-entries/time-entry-service';
 import type { TimeEntryCorrectionService } from '@/application/time-entry-corrections/time-entry-correction-service';
+import type { TimePeriodService } from '@/application/time-periods/time-period-service';
 import type { TimeEntryCorrection } from '@/domain/time-entry-correction';
 
 interface CreateUseTimeEntryHistoryDependencies {
   correctionService: TimeEntryCorrectionService;
   timeEntryService: TimeEntryService;
+  timePeriodService: TimePeriodService;
 }
 
 export function createUseTimeEntryHistory({
   correctionService,
   timeEntryService,
+  timePeriodService,
 }: CreateUseTimeEntryHistoryDependencies) {
   return function useTimeEntryHistory(userId: string) {
     const [monthKey, setMonthKey] = useState(() => getBusinessDateKeys(new Date()).monthKey);
@@ -22,6 +25,7 @@ export function createUseTimeEntryHistory({
     const [corrections, setCorrections] = useState<TimeEntryCorrection[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
+    const [isPeriodClosed, setIsPeriodClosed] = useState(false);
     const [reloadCount, setReloadCount] = useState(0);
 
     const findMonth = useCallback(
@@ -29,6 +33,7 @@ export function createUseTimeEntryHistory({
         Promise.all([
           timeEntryService.findMonth(userId, monthKey, new Date()),
           correctionService.findMonth(userId, monthKey),
+          timePeriodService.find(monthKey),
         ]),
       [monthKey, userId],
     );
@@ -40,10 +45,11 @@ export function createUseTimeEntryHistory({
       setHasError(false);
 
       void findMonth()
-        .then(([timeEntries, monthlyCorrections]) => {
+        .then(([timeEntries, monthlyCorrections, period]) => {
           if (isActive) {
             setDays(timeEntries.days);
             setCorrections(monthlyCorrections);
+            setIsPeriodClosed(period.status === 'CLOSED');
           }
         })
         .catch(() => {
@@ -67,6 +73,7 @@ export function createUseTimeEntryHistory({
       corrections,
       hasError,
       isLoading,
+      isPeriodClosed,
       load,
       monthKey,
       selectMonth: setMonthKey,

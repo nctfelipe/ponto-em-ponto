@@ -19,6 +19,7 @@ interface Props {
   day: MonthlyTimeEntryDay;
   errorMessage: string | null;
   isSubmitting: boolean;
+  isReadOnly: boolean;
   onClose: () => void;
   onDecision: (id: string, status: 'APPROVED' | 'REJECTED') => Promise<boolean>;
   onSubmit: (entries: CorrectionEntry[]) => Promise<boolean>;
@@ -39,6 +40,7 @@ export function TimeEntryCorrectionDialog({
   day,
   errorMessage,
   isSubmitting,
+  isReadOnly,
   onClose,
   onDecision,
   onSubmit,
@@ -46,7 +48,7 @@ export function TimeEntryCorrectionDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const nextId = useRef(0);
   const [tab, setTab] = useState<DialogTab>(
-    corrections.some(({ status }) => status === 'PENDING') ? 'HISTORY' : 'CORRECTION',
+    isReadOnly || corrections.some(({ status }) => status === 'PENDING') ? 'HISTORY' : 'CORRECTION',
   );
   const [drafts, setDrafts] = useState<DraftEntry[]>(() =>
     day.entries.map((entry) => ({
@@ -116,16 +118,18 @@ export function TimeEntryCorrectionDialog({
       <h2 className="text-xl font-semibold capitalize text-content" id="correction-title">
         Correções de {formatBusinessDayKey(day.dayKey)}
       </h2>
-      <div className="mt-5">
-        <SegmentedControl
-          onChange={setTab}
-          options={[
-            { label: 'Correção', value: 'CORRECTION' },
-            { label: 'Histórico', value: 'HISTORY' },
-          ]}
-          value={tab}
-        />
-      </div>
+      {!isReadOnly && (
+        <div className="mt-5">
+          <SegmentedControl
+            onChange={setTab}
+            options={[
+              { label: 'Correção', value: 'CORRECTION' },
+              { label: 'Histórico', value: 'HISTORY' },
+            ]}
+            value={tab}
+          />
+        </div>
+      )}
 
       {tab === 'CORRECTION' && (
         <>
@@ -174,7 +178,7 @@ export function TimeEntryCorrectionDialog({
 
       {tab === 'HISTORY' && (
         <TimeEntryCorrectionHistory
-          canDecide={canApplyDirectly}
+          canDecide={canApplyDirectly && !isReadOnly}
           corrections={corrections}
           isSubmitting={isSubmitting}
           onDecision={(id, status) => {
