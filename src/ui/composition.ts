@@ -35,7 +35,7 @@ const timePeriodService = new TimePeriodService(
 export const useSession = createUseSession({ sessionService });
 export const useUserProfile = createUseUserProfile({ profileRepository });
 export const useUsers = createUseUsers({ profileRepository });
-export const useTimePeriod = createUseTimePeriod({ timePeriodService });
+export const useTimePeriod = createUseTimePeriod({ profileRepository, timePeriodService });
 export const useTimeEntryHistory = createUseTimeEntryHistory({
   correctionService: timeEntryCorrectionService,
   timeEntryService,

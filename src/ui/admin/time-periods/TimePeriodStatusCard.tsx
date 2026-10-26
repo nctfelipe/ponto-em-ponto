@@ -4,11 +4,16 @@ import { Button } from '@/ui/components/Button';
 import { formatBusinessShortDateTime } from '@/ui/formatters/business-time';
 
 interface TimePeriodStatusCardProps {
+  hasPendingCorrections: boolean;
   onRequestClose: () => void;
   period: TimePeriod;
 }
 
-export function TimePeriodStatusCard({ onRequestClose, period }: TimePeriodStatusCardProps) {
+export function TimePeriodStatusCard({
+  hasPendingCorrections,
+  onRequestClose,
+  period,
+}: TimePeriodStatusCardProps) {
   const isClosed = period.status === 'CLOSED';
 
   return (
@@ -25,7 +30,7 @@ export function TimePeriodStatusCard({ onRequestClose, period }: TimePeriodStatu
       </div>
 
       {!isClosed && (
-        <Button onClick={onRequestClose} type="button">
+        <Button disabled={hasPendingCorrections} onClick={onRequestClose} type="button">
           Fechar mês
         </Button>
       )}

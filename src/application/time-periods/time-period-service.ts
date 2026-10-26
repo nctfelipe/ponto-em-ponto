@@ -31,6 +31,10 @@ export class TimePeriodService {
     return this.periodRepository.find(monthKey);
   }
 
+  findPendingCorrections(monthKey: string) {
+    return this.correctionRepository.findPendingByMonth(monthKey);
+  }
+
   async close(monthKey: string, closedById: string) {
     const period = await this.periodRepository.find(monthKey);
     if (period.status === 'CLOSED') throw new ClosedTimePeriodError();

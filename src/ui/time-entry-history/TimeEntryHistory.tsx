@@ -10,16 +10,18 @@ import { TimeEntryHistoryList } from '@/ui/time-entry-history/TimeEntryHistoryLi
 
 interface TimeEntryHistoryProps {
   canApplyDirectly: boolean;
+  initialMonthKey?: string | undefined;
   requestedById: string;
   userId: string;
 }
 
 export function TimeEntryHistory({
   canApplyDirectly,
+  initialMonthKey,
   requestedById,
   userId,
 }: TimeEntryHistoryProps) {
-  const history = useTimeEntryHistory(userId);
+  const history = useTimeEntryHistory(userId, initialMonthKey);
   const correction = useTimeEntryCorrection({ requestedById, userId });
   const [selectedDay, setSelectedDay] = useState<MonthlyTimeEntryDay | null>(null);
 

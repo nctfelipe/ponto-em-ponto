@@ -19,8 +19,10 @@ export function createUseTimeEntryHistory({
   timeEntryService,
   timePeriodService,
 }: CreateUseTimeEntryHistoryDependencies) {
-  return function useTimeEntryHistory(userId: string) {
-    const [monthKey, setMonthKey] = useState(() => getBusinessDateKeys(new Date()).monthKey);
+  return function useTimeEntryHistory(userId: string, initialMonthKey?: string) {
+    const [monthKey, setMonthKey] = useState(
+      () => initialMonthKey ?? getBusinessDateKeys(new Date()).monthKey,
+    );
     const [days, setDays] = useState<MonthlyTimeEntryDay[]>([]);
     const [corrections, setCorrections] = useState<TimeEntryCorrection[]>([]);
     const [isLoading, setIsLoading] = useState(true);
