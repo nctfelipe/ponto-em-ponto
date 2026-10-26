@@ -1,6 +1,7 @@
+import { LogOut } from 'lucide-react';
 import { Outlet } from 'react-router';
 import { Brand } from '@/ui/components/Brand';
-import { Button } from '@/ui/components/Button';
+import { IconButton } from '@/ui/components/IconButton';
 import { NavigationSidebar, type NavigationItem } from '@/ui/layout/NavigationSidebar';
 
 interface AppShellProps {
@@ -11,11 +12,11 @@ interface AppShellProps {
 export function AppShell({ navigationItems, onSignOut }: AppShellProps) {
   return (
     <main className="flex min-h-svh flex-col bg-background">
-      <header className="flex items-center justify-between border-b border-border border-t-4 border-t-brand bg-surface px-4 py-3 sm:px-6">
+      <header className="flex items-center justify-between border-b border-border border-t-4 border-t-brand-strong bg-brand px-4 py-3 sm:px-6">
         <Brand compactOnMobile />
-        <Button onClick={() => void onSignOut()} type="button" variant="secondary">
-          Sair
-        </Button>
+        <IconButton aria-label="Sair" onClick={() => void onSignOut()} title="Sair" type="button">
+          <LogOut aria-hidden="true" size={20} />
+        </IconButton>
       </header>
       <div className="flex-1 md:flex">
         <NavigationSidebar items={navigationItems} />

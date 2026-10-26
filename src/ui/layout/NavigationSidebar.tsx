@@ -11,7 +11,7 @@ interface NavigationSidebarProps {
 
 export function NavigationSidebar({ items }: NavigationSidebarProps) {
   return (
-    <aside className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-surface px-3 py-2 md:static md:w-64 md:border-t-0 md:border-r md:px-6 md:py-4">
+    <aside className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-brand-subtle px-3 py-2 md:static md:w-64 md:border-t-0 md:border-r md:px-6 md:py-4">
       <nav aria-label="Navegação principal">
         <ul className="flex gap-1 md:block md:space-y-1">
           {items.map((item) => (
