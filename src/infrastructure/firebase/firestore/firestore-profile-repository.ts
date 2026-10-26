@@ -7,7 +7,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-} from 'firebase/firestore';
+} from 'firebase/firestore/lite';
 import {
   ProfileRepositoryError,
   type NewPendingProfile,

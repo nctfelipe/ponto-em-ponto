@@ -10,7 +10,7 @@ import {
   query,
   serverTimestamp,
   where,
-} from 'firebase/firestore';
+} from 'firebase/firestore/lite';
 import {
   TimeEntryRepositoryError,
   type NewTimeEntry,

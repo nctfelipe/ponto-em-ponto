@@ -1,4 +1,11 @@
-import { Timestamp, doc, getDoc, getFirestore, serverTimestamp, setDoc } from 'firebase/firestore';
+import {
+  Timestamp,
+  doc,
+  getDoc,
+  getFirestore,
+  serverTimestamp,
+  setDoc,
+} from 'firebase/firestore/lite';
 import {
   TimePeriodRepositoryError,
   type TimePeriodRepository,

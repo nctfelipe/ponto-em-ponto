@@ -12,7 +12,7 @@ import {
   where,
   writeBatch,
   type WriteBatch,
-} from 'firebase/firestore';
+} from 'firebase/firestore/lite';
 import {
   TimeEntryCorrectionRepositoryError,
   type NewTimeEntryCorrection,
