@@ -26,6 +26,7 @@ const entry: TimeEntry = {
 
 class FakeTimeEntryRepository implements TimeEntryRepository {
   entries = [entry];
+  findDayCalls = 0;
   create() {
     return Promise.resolve(entry);
   }
@@ -33,6 +34,7 @@ class FakeTimeEntryRepository implements TimeEntryRepository {
     return Promise.resolve(this.entries.find((item) => item.id === id) ?? null);
   }
   findByUserAndDay(userId: string, dayKey: string) {
+    this.findDayCalls += 1;
     return Promise.resolve(
       this.entries.filter((item) => item.userId === userId && item.dayKey === dayKey),
     );
@@ -43,21 +45,21 @@ class FakeTimeEntryRepository implements TimeEntryRepository {
 }
 
 class FakeCorrectionRepository implements TimeEntryCorrectionRepository {
-  applied: NewTimeEntryCorrection[] = [];
+  applied: { correction: NewTimeEntryCorrection; decidedById: string }[] = [];
   created: NewTimeEntryCorrection[] = [];
   corrections: TimeEntryCorrection[] = [];
-  decisions: { id: string; status: 'APPROVED' | 'REJECTED' }[] = [];
+  decisions: { decidedById: string; id: string; status: 'APPROVED' | 'REJECTED' }[] = [];
 
-  apply(correction: NewTimeEntryCorrection) {
-    this.applied.push(correction);
+  apply(correction: NewTimeEntryCorrection, decidedById: string) {
+    this.applied.push({ correction, decidedById });
     return Promise.resolve();
   }
   create(correction: NewTimeEntryCorrection) {
     this.created.push(correction);
     return Promise.resolve();
   }
-  decide(correction: TimeEntryCorrection, status: 'APPROVED' | 'REJECTED') {
-    this.decisions.push({ id: correction.id, status });
+  decide(correction: TimeEntryCorrection, status: 'APPROVED' | 'REJECTED', decidedById: string) {
+    this.decisions.push({ decidedById, id: correction.id, status });
     return Promise.resolve();
   }
   findById(id: string) {
@@ -217,5 +219,99 @@ describe('TimeEntryCorrectionService', () => {
       OutdatedTimeEntryCorrectionError,
     );
     expect(corrections.decisions).toHaveLength(0);
+  });
+
+  it('approves a pending correction based on the current daily state', async () => {
+    const { corrections, service } = createService();
+    corrections.corrections = [pendingCorrection()];
+
+    await service.decide('correction-1', 'APPROVED', 'admin-1');
+
+    expect(corrections.decisions).toEqual([
+      { decidedById: 'admin-1', id: 'correction-1', status: 'APPROVED' },
+    ]);
+  });
+
+  it('rejects a pending correction without validating the current daily state', async () => {
+    const { corrections, entries, service } = createService();
+    corrections.corrections = [pendingCorrection()];
+    entries.entries = [];
+
+    await service.decide('correction-1', 'REJECTED', 'admin-1');
+
+    expect(entries.findDayCalls).toBe(0);
+    expect(corrections.decisions).toEqual([
+      { decidedById: 'admin-1', id: 'correction-1', status: 'REJECTED' },
+    ]);
+  });
+
+  it('prevents proposals that reference an unknown time entry', async () => {
+    const { service } = createService();
+
+    await expect(
+      service.request({
+        dayKey: entry.dayKey,
+        proposedEntries: [
+          { recordedAt: entry.recordedAt, timeEntryId: 'unknown-entry' },
+          { recordedAt: new Date('2026-10-19T15:00:00.000Z'), timeEntryId: null },
+        ],
+        requestedById: entry.userId,
+        userId: entry.userId,
+      }),
+    ).rejects.toBeInstanceOf(InvalidTimeEntryCorrectionError);
+  });
+
+  it('prevents proposals that reference the same time entry twice', async () => {
+    const { service } = createService();
+
+    await expect(
+      service.request({
+        dayKey: entry.dayKey,
+        proposedEntries: [
+          { recordedAt: entry.recordedAt, timeEntryId: entry.id },
+          { recordedAt: new Date('2026-10-19T15:00:00.000Z'), timeEntryId: entry.id },
+        ],
+        requestedById: entry.userId,
+        userId: entry.userId,
+      }),
+    ).rejects.toBeInstanceOf(InvalidTimeEntryCorrectionError);
+  });
+
+  it('prevents proposals with timestamps outside the corrected business day', async () => {
+    const { service } = createService();
+
+    await expect(
+      service.request({
+        dayKey: entry.dayKey,
+        proposedEntries: [
+          { recordedAt: new Date('2026-10-20T11:00:00.000Z'), timeEntryId: entry.id },
+          { recordedAt: new Date('2026-10-20T15:00:00.000Z'), timeEntryId: null },
+        ],
+        requestedById: entry.userId,
+        userId: entry.userId,
+      }),
+    ).rejects.toBeInstanceOf(InvalidTimeEntryCorrectionError);
+  });
+
+  it('applies an administrator correction as an approved operation', async () => {
+    const { corrections, service } = createService();
+    const proposedEntries = [
+      { recordedAt: entry.recordedAt, timeEntryId: entry.id },
+      { recordedAt: new Date('2026-10-19T15:00:00.000Z'), timeEntryId: null },
+    ];
+
+    await service.apply({
+      dayKey: entry.dayKey,
+      proposedEntries,
+      requestedById: 'admin-1',
+      userId: entry.userId,
+    });
+
+    expect(corrections.applied).toHaveLength(1);
+    expect(corrections.applied[0]?.decidedById).toBe('admin-1');
+    expect(corrections.applied[0]?.correction).toMatchObject({
+      proposedEntries,
+      requestedById: 'admin-1',
+    });
   });
 });

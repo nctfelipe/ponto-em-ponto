@@ -1,4 +1,4 @@
-import type { PendingTimePeriodUser } from '@/ui/admin/time-periods/useTimePeriod';
+import type { PendingTimePeriodUser } from '@/application/time-periods/time-period-service';
 import { Button } from '@/ui/components/Button';
 
 interface PendingTimePeriodUsersProps {

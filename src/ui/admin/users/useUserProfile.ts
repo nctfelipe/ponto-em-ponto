@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ProfileRepository } from '@/application/profiles/profile-repository';
+import type { ProfileService } from '@/application/profiles/profile-service';
 import type { Profile } from '@/domain/profile';
 
 interface CreateUseUserProfileDependencies {
-  profileRepository: ProfileRepository;
+  profileService: ProfileService;
 }
 
-export function createUseUserProfile({ profileRepository }: CreateUseUserProfileDependencies) {
+export function createUseUserProfile({ profileService }: CreateUseUserProfileDependencies) {
   return function useUserProfile(userId: string) {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
     const [reloadCount, setReloadCount] = useState(0);
 
-    const findProfile = useCallback(() => profileRepository.findById(userId), [userId]);
+    const findProfile = useCallback(() => profileService.findById(userId), [userId]);
 
     useEffect(() => {
       let isActive = true;

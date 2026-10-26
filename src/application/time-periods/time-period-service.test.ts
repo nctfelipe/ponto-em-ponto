@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TimeEntryCorrectionRepository } from '@/application/time-entry-corrections/time-entry-correction-repository';
+import type { ProfileRepository } from '@/application/profiles/profile-repository';
 import type { TimePeriodRepository } from '@/application/time-periods/time-period-repository';
 import {
   ClosedTimePeriodError,
@@ -8,6 +9,7 @@ import {
 } from '@/application/time-periods/time-period-service';
 import type { TimeEntryCorrection } from '@/domain/time-entry-correction';
 import type { TimePeriod } from '@/domain/time-period';
+import type { Profile } from '@/domain/profile';
 
 class FakeTimePeriodRepository implements TimePeriodRepository {
   closeInputs: { closedById: string; monthKey: string }[] = [];
@@ -53,6 +55,22 @@ class FakeCorrectionRepository implements TimeEntryCorrectionRepository {
   }
 }
 
+class FakeProfileRepository implements ProfileRepository {
+  profiles: Profile[] = [];
+  activate(): Promise<Profile> {
+    return Promise.reject(new Error('Not implemented.'));
+  }
+  createPending(): Promise<Profile> {
+    return Promise.reject(new Error('Not implemented.'));
+  }
+  findAll() {
+    return Promise.resolve(this.profiles);
+  }
+  findById() {
+    return Promise.resolve(null);
+  }
+}
+
 function pendingCorrection(): TimeEntryCorrection {
   return {
     dayKey: '2026-09-10',
@@ -72,7 +90,13 @@ function pendingCorrection(): TimeEntryCorrection {
 function createService() {
   const corrections = new FakeCorrectionRepository();
   const periods = new FakeTimePeriodRepository();
-  return { corrections, periods, service: new TimePeriodService(periods, corrections) };
+  const profiles = new FakeProfileRepository();
+  return {
+    corrections,
+    periods,
+    profiles,
+    service: new TimePeriodService(periods, corrections, profiles),
+  };
 }
 
 describe('TimePeriodService', () => {
@@ -105,5 +129,27 @@ describe('TimePeriodService', () => {
 
     await expect(service.close('2026-09', 'admin-1')).rejects.toBeInstanceOf(ClosedTimePeriodError);
     expect(periods.closeInputs).toHaveLength(0);
+  });
+
+  it('groups pending days by user in the closing overview', async () => {
+    const { corrections, profiles, service } = createService();
+    corrections.pending = [
+      pendingCorrection(),
+      { ...pendingCorrection(), id: 'correction-2', dayKey: '2026-09-11' },
+    ];
+    profiles.profiles = [
+      { displayName: 'User One', email: 'user@example.com', id: 'user-1', status: 'ACTIVE' },
+    ];
+
+    await expect(service.getClosingOverview('2026-09')).resolves.toMatchObject({
+      pendingUsers: [
+        {
+          dayCount: 2,
+          displayName: 'User One',
+          email: 'user@example.com',
+          userId: 'user-1',
+        },
+      ],
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { DefaultTimeEntryService } from '@/application/time-entries/time-entry-service';
 import { TimeEntryCorrectionService } from '@/application/time-entry-corrections/time-entry-correction-service';
 import { TimePeriodService } from '@/application/time-periods/time-period-service';
+import { DefaultProfileService } from '@/application/profiles/profile-service';
 import { DefaultSessionService } from '@/application/session/session-service';
 import { FirebaseIdentityProvider } from '@/infrastructure/firebase/auth/firebase-identity-provider';
 import { FirestoreProfileRepository } from '@/infrastructure/firebase/firestore/firestore-profile-repository';
@@ -17,6 +18,7 @@ import { createUseTimeEntries } from '@/ui/time-entries/useTimeEntries';
 
 const identityProvider = new FirebaseIdentityProvider();
 const profileRepository = new FirestoreProfileRepository();
+const profileService = new DefaultProfileService(profileRepository);
 const sessionService = new DefaultSessionService(identityProvider, profileRepository);
 const timeEntryRepository = new FirestoreTimeEntryRepository();
 const timeEntryCorrectionRepository = new FirestoreTimeEntryCorrectionRepository();
@@ -30,12 +32,13 @@ const timeEntryCorrectionService = new TimeEntryCorrectionService(
 const timePeriodService = new TimePeriodService(
   timePeriodRepository,
   timeEntryCorrectionRepository,
+  profileRepository,
 );
 
 export const useSession = createUseSession({ sessionService });
-export const useUserProfile = createUseUserProfile({ profileRepository });
-export const useUsers = createUseUsers({ profileRepository });
-export const useTimePeriod = createUseTimePeriod({ profileRepository, timePeriodService });
+export const useUserProfile = createUseUserProfile({ profileService });
+export const useUsers = createUseUsers({ profileService });
+export const useTimePeriod = createUseTimePeriod({ timePeriodService });
 export const useTimeEntryHistory = createUseTimeEntryHistory({
   correctionService: timeEntryCorrectionService,
   timeEntryService,
