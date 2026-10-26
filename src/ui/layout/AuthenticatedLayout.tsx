@@ -6,7 +6,10 @@ const commonNavigation: NavigationItem[] = [
   { label: 'Início', to: '/' },
   { label: 'Histórico', to: '/time-entries' },
 ];
-const adminNavigation: NavigationItem[] = [{ label: 'Usuários', to: '/users' }];
+const adminNavigation: NavigationItem[] = [
+  { label: 'Usuários', to: '/users' },
+  { label: 'Fechamentos', to: '/time-periods' },
+];
 
 interface AuthenticatedLayoutProps {
   identity: Identity;

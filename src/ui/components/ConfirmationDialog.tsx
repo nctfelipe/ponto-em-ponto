@@ -3,6 +3,7 @@ import { Button } from '@/ui/components/Button';
 
 interface ConfirmationDialogProps {
   confirmLabel: string;
+  confirmVariant?: 'danger' | 'primary';
   description: string;
   isConfirming?: boolean;
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface ConfirmationDialogProps {
 
 export function ConfirmationDialog({
   confirmLabel,
+  confirmVariant = 'primary',
   description,
   isConfirming = false,
   isOpen,
@@ -48,7 +50,12 @@ export function ConfirmationDialog({
         <Button disabled={isConfirming} onClick={onCancel} type="button" variant="secondary">
           Cancelar
         </Button>
-        <Button disabled={isConfirming} onClick={() => void onConfirm()} type="button">
+        <Button
+          disabled={isConfirming}
+          onClick={() => void onConfirm()}
+          type="button"
+          variant={confirmVariant}
+        >
           {isConfirming ? 'Registrando...' : confirmLabel}
         </Button>
       </div>
