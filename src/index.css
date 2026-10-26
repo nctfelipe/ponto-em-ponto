@@ -3,9 +3,7 @@
 @theme {
   --color-primary: var(--color-blue-600);
   --color-primary-subtle: var(--color-blue-50);
-  --color-brand-strong: #facc5d;
-  --color-brand: #fde9a7;
-  --color-brand-subtle: #fff8e1;
+  --color-brand: #facc5d;
   --color-danger: var(--color-red-700);
   --color-danger-subtle: var(--color-red-50);
   --color-warning: var(--color-amber-700);

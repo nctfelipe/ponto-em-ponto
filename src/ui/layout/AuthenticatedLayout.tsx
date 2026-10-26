@@ -1,11 +1,11 @@
-import { CalendarCheck, Clock, House, Users } from 'lucide-react';
+import { CalendarCheck, CalendarDays, House, Users } from 'lucide-react';
 import type { Identity } from '@/application/identity/identity-provider';
 import { AppShell } from '@/ui/layout/AppShell';
 import type { NavigationItem } from '@/ui/layout/NavigationSidebar';
 
 const commonNavigation: NavigationItem[] = [
   { icon: House, label: 'Início', to: '/' },
-  { icon: Clock, label: 'Histórico', to: '/time-entries' },
+  { icon: CalendarDays, label: 'Histórico', to: '/time-entries' },
 ];
 const adminNavigation: NavigationItem[] = [
   { icon: Users, label: 'Usuários', to: '/users' },

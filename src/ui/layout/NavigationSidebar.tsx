@@ -13,7 +13,7 @@ interface NavigationSidebarProps {
 
 export function NavigationSidebar({ items }: NavigationSidebarProps) {
   return (
-    <aside className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-brand-subtle md:static md:w-64 md:border-t-0 md:border-r md:pb-4">
+    <aside className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-surface md:static md:w-64 md:border-t-0 md:border-r md:pb-4">
       <nav aria-label="Navegação principal">
         <ul className="flex md:block">
           {items.map((item) => {
@@ -25,8 +25,8 @@ export function NavigationSidebar({ items }: NavigationSidebarProps) {
                   className={({ isActive }) =>
                     `flex items-center justify-center gap-3 px-3 py-3 text-sm font-semibold transition-colors md:justify-start md:border-l-4 md:px-6 md:py-3 md:pl-5 ${
                       isActive
-                        ? 'bg-brand text-content md:border-brand-strong'
-                        : 'text-content-secondary hover:bg-brand/60 hover:text-content md:border-transparent'
+                        ? 'bg-brand/25 text-content md:border-brand'
+                        : 'text-content-secondary hover:bg-brand/10 hover:text-content md:border-transparent'
                     }`
                   }
                   end={item.to === '/'}

@@ -12,7 +12,7 @@ interface AppShellProps {
 export function AppShell({ navigationItems, onSignOut }: AppShellProps) {
   return (
     <main className="flex min-h-svh flex-col bg-background">
-      <header className="flex items-center justify-between border-b border-border border-t-4 border-t-brand-strong bg-brand px-4 py-3 sm:px-6">
+      <header className="flex items-center justify-between border-b border-border border-t-4 border-t-brand bg-surface px-4 py-3 sm:px-6">
         <Brand compactOnMobile />
         <IconButton aria-label="Sair" onClick={() => void onSignOut()} title="Sair" type="button">
           <LogOut aria-hidden="true" size={20} />
