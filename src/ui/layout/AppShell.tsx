@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router';
+import { Brand } from '@/ui/components/Brand';
 import { Button } from '@/ui/components/Button';
 import { NavigationSidebar, type NavigationItem } from '@/ui/layout/NavigationSidebar';
 
@@ -10,8 +11,8 @@ interface AppShellProps {
 export function AppShell({ navigationItems, onSignOut }: AppShellProps) {
   return (
     <main className="flex min-h-svh flex-col bg-background">
-      <header className="flex items-center justify-between border-b border-border bg-surface px-6 py-4">
-        <h1 className="text-xl font-semibold text-content">Ponto em Ponto</h1>
+      <header className="flex items-center justify-between border-b border-border border-t-4 border-t-brand bg-surface px-4 py-3 sm:px-6">
+        <Brand compactOnMobile />
         <Button onClick={() => void onSignOut()} type="button" variant="secondary">
           Sair
         </Button>

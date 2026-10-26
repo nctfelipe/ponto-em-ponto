@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert } from '@/ui/components/Alert';
+import { Brand } from '@/ui/components/Brand';
 import { Button } from '@/ui/components/Button';
 import { PageCard } from '@/ui/components/PageCard';
 
@@ -24,7 +25,7 @@ export function AccessErrorPage({ onRetry, onSignOut }: AccessErrorPageProps) {
   }
 
   return (
-    <PageCard title="Ponto em Ponto">
+    <PageCard eyebrow={<Brand />} title="Não foi possível carregar seu acesso">
       <div className="mt-3">
         <Alert variant="error">Não foi possível concluir seu acesso. Tente novamente.</Alert>
       </div>
