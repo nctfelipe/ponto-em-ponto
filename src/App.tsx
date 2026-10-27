@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { AdminTimeEntryHistoryPage } from '@/ui/admin/time-entries/AdminTimeEntryHistoryPage';
+import { TimePeriodsPage } from '@/ui/admin/time-periods/TimePeriodsPage';
 import { UsersPage } from '@/ui/admin/users/UsersPage';
 import { AuthenticationPage } from '@/ui/authentication/AuthenticationPage';
 import { useSession } from '@/ui/composition';
@@ -76,6 +77,7 @@ function App() {
         {identity.isAdmin && (
           <>
             <Route element={<UsersPage />} path="users" />
+            <Route element={<TimePeriodsPage adminId={identity.id} />} path="time-periods" />
             <Route
               element={<AdminTimeEntryHistoryPage requestedById={identity.id} />}
               path="users/:userId/time-entries"

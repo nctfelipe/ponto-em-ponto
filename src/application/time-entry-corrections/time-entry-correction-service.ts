@@ -6,6 +6,7 @@ import type {
   TimeEntryCorrectionRepository,
 } from '@/application/time-entry-corrections/time-entry-correction-repository';
 import type { TimePeriodRepository } from '@/application/time-periods/time-period-repository';
+import { ClosedTimePeriodError } from '@/application/time-periods/time-period-service';
 import type { CorrectionEntry, TimeEntryCorrectionStatus } from '@/domain/time-entry-correction';
 
 export interface SubmitTimeEntryCorrectionInput {
@@ -15,7 +16,6 @@ export interface SubmitTimeEntryCorrectionInput {
   userId: string;
 }
 
-export class ClosedTimePeriodError extends Error {}
 export class PendingTimeEntryCorrectionError extends Error {}
 export class InvalidTimeEntryCorrectionError extends Error {}
 export class TimeEntryCorrectionNotPendingError extends Error {}
@@ -77,7 +77,7 @@ export class TimeEntryCorrectionService {
       throw new TimeEntryCorrectionNotPendingError();
     }
 
-    await this.ensureOpenPeriod(correction.userId, correction.monthKey);
+    await this.ensureOpenPeriod(correction.monthKey);
 
     if (status === 'APPROVED') {
       this.validateProposal(correction.dayKey, correction.proposedEntries);
@@ -99,7 +99,7 @@ export class TimeEntryCorrectionService {
     }
     const monthKey = input.dayKey.slice(0, 7);
     this.validateProposal(input.dayKey, input.proposedEntries);
-    await this.ensureOpenPeriod(input.userId, monthKey);
+    await this.ensureOpenPeriod(monthKey);
 
     const pending = await this.correctionRepository.findPendingByDay(input.userId, input.dayKey);
     if (pending) throw new PendingTimeEntryCorrectionError();
@@ -141,9 +141,8 @@ export class TimeEntryCorrectionService {
     }
   }
 
-  private async ensureOpenPeriod(userId: string, monthKey: string) {
-    if (await this.periodRepository.isClosed(userId, monthKey)) {
-      throw new ClosedTimePeriodError();
-    }
+  private async ensureOpenPeriod(monthKey: string) {
+    const period = await this.periodRepository.find(monthKey);
+    if (period.status === 'CLOSED') throw new ClosedTimePeriodError();
   }
 }

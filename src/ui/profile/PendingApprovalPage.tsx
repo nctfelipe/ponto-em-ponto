@@ -1,4 +1,5 @@
 import { Alert } from '@/ui/components/Alert';
+import { Brand } from '@/ui/components/Brand';
 import { Button } from '@/ui/components/Button';
 import { PageCard } from '@/ui/components/PageCard';
 
@@ -8,7 +9,7 @@ interface PendingApprovalPageProps {
 
 export function PendingApprovalPage({ onSignOut }: PendingApprovalPageProps) {
   return (
-    <PageCard title="Cadastro em análise">
+    <PageCard eyebrow={<Brand />} title="Cadastro em análise">
       <div className="mt-3">
         <Alert>Seu cadastro está aguardando a aprovação de um administrador.</Alert>
       </div>

@@ -11,6 +11,7 @@ interface TimeEntryHistoryListProps {
   corrections: TimeEntryCorrection[];
   canApplyDirectly: boolean;
   days: MonthlyTimeEntryDay[];
+  isPeriodClosed: boolean;
   onOpenCorrections: (day: MonthlyTimeEntryDay) => void;
 }
 
@@ -24,6 +25,7 @@ export function TimeEntryHistoryList({
   corrections,
   canApplyDirectly,
   days,
+  isPeriodClosed,
   onOpenCorrections,
 }: TimeEntryHistoryListProps) {
   return (
@@ -70,22 +72,26 @@ export function TimeEntryHistoryList({
             </span>
 
             <div className="flex flex-wrap justify-end gap-2 md:justify-center">
-              {!day.isFuture && (
-                <Button
-                  onClick={() => {
-                    onOpenCorrections(day);
-                  }}
-                  size="small"
-                  type="button"
-                  variant="secondary"
-                >
-                  {hasPendingCorrection(corrections, day.dayKey)
-                    ? canApplyDirectly
-                      ? 'Revisar'
-                      : 'Correção pendente'
-                    : 'Correções'}
-                </Button>
-              )}
+              {!day.isFuture &&
+                (!isPeriodClosed ||
+                  corrections.some((correction) => correction.dayKey === day.dayKey)) && (
+                  <Button
+                    onClick={() => {
+                      onOpenCorrections(day);
+                    }}
+                    size="small"
+                    type="button"
+                    variant="secondary"
+                  >
+                    {isPeriodClosed
+                      ? 'Histórico'
+                      : hasPendingCorrection(corrections, day.dayKey)
+                        ? canApplyDirectly
+                          ? 'Revisar'
+                          : 'Correção pendente'
+                        : 'Correções'}
+                  </Button>
+                )}
             </div>
           </DataListRow>
         ))}

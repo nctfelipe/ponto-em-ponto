@@ -1,12 +1,16 @@
+import { CalendarCheck, CalendarDays, House, Users } from 'lucide-react';
 import type { Identity } from '@/application/identity/identity-provider';
 import { AppShell } from '@/ui/layout/AppShell';
 import type { NavigationItem } from '@/ui/layout/NavigationSidebar';
 
 const commonNavigation: NavigationItem[] = [
-  { label: 'Início', to: '/' },
-  { label: 'Histórico', to: '/time-entries' },
+  { icon: House, label: 'Início', to: '/' },
+  { icon: CalendarDays, label: 'Histórico', to: '/time-entries' },
 ];
-const adminNavigation: NavigationItem[] = [{ label: 'Usuários', to: '/users' }];
+const adminNavigation: NavigationItem[] = [
+  { icon: Users, label: 'Usuários', to: '/users' },
+  { icon: CalendarCheck, label: 'Fechamentos', to: '/time-periods' },
+];
 
 interface AuthenticatedLayoutProps {
   identity: Identity;

@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { approveProfile } from '@/application/profiles/approve-profile';
-import type { ProfileRepository } from '@/application/profiles/profile-repository';
+import type { ProfileService } from '@/application/profiles/profile-service';
 import type { Profile } from '@/domain/profile';
 
 interface CreateUseUsersDependencies {
-  profileRepository: ProfileRepository;
+  profileService: ProfileService;
 }
 
-export function createUseUsers({ profileRepository }: CreateUseUsersDependencies) {
+export function createUseUsers({ profileService }: CreateUseUsersDependencies) {
   return function useUsers() {
     const [users, setUsers] = useState<Profile[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -19,7 +18,7 @@ export function createUseUsers({ profileRepository }: CreateUseUsersDependencies
       setHasError(false);
 
       try {
-        setUsers(await profileRepository.findAll());
+        setUsers(await profileService.findAll());
       } catch {
         setHasError(true);
       } finally {
@@ -30,7 +29,7 @@ export function createUseUsers({ profileRepository }: CreateUseUsersDependencies
     useEffect(() => {
       let isActive = true;
 
-      void profileRepository
+      void profileService
         .findAll()
         .then((profiles) => {
           if (isActive) setUsers(profiles);
@@ -52,7 +51,7 @@ export function createUseUsers({ profileRepository }: CreateUseUsersDependencies
       setHasError(false);
 
       try {
-        const activeUser = await approveProfile(user.id, profileRepository);
+        const activeUser = await profileService.activate(user.id);
         setUsers((current) =>
           current.map((item) => (item.id === activeUser.id ? activeUser : item)),
         );

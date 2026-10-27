@@ -4,12 +4,14 @@ import { formatBusinessTime } from '@/ui/formatters/business-time';
 
 interface LiveTimeEntryButtonProps {
   isAvailable: boolean;
+  isPeriodClosed: boolean;
   isRegistering: boolean;
   onClick: () => void;
 }
 
 export function LiveTimeEntryButton({
   isAvailable,
+  isPeriodClosed,
   isRegistering,
   onClick,
 }: LiveTimeEntryButtonProps) {
@@ -33,7 +35,11 @@ export function LiveTimeEntryButton({
       size="large"
       type="button"
     >
-      {isAvailable ? `Registrar ponto · ${currentTime}` : 'Registros do dia concluídos'}
+      {isAvailable
+        ? `Registrar ponto · ${currentTime}`
+        : isPeriodClosed
+          ? 'Mês fechado'
+          : 'Registros do dia concluídos'}
     </Button>
   );
 }

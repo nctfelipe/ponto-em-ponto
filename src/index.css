@@ -1,14 +1,26 @@
 @import 'tailwindcss';
 
+@font-face {
+  font-family: 'Manrope Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url('@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2')
+    format('woff2-variations');
+}
+
 @theme {
-  --color-primary: var(--color-blue-600);
-  --color-primary-subtle: var(--color-blue-50);
+  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: var(--color-blue-700);
+  --color-primary-subtle: var(--color-blue-100);
+  --color-brand: #facc5d;
   --color-danger: var(--color-red-700);
-  --color-danger-subtle: var(--color-red-50);
+  --color-danger-subtle: var(--color-red-100);
   --color-warning: var(--color-amber-700);
-  --color-warning-subtle: var(--color-amber-50);
+  --color-warning-subtle: var(--color-amber-100);
   --color-success: var(--color-emerald-700);
-  --color-success-subtle: var(--color-emerald-50);
+  --color-success-subtle: var(--color-emerald-100);
 
   --color-background: var(--color-slate-50);
   --color-surface: var(--color-white);
@@ -18,4 +30,14 @@
   --color-content-secondary: var(--color-slate-700);
   --color-content-muted: var(--color-slate-500);
   --color-on-primary: var(--color-white);
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-primary);
+  }
 }

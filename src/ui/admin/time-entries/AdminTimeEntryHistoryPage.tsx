@@ -1,4 +1,4 @@
-import { Navigate, useNavigate, useParams } from 'react-router';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { UserHistoryContext } from '@/ui/admin/time-entries/UserHistoryContext';
 import { Alert } from '@/ui/components/Alert';
 import { Button } from '@/ui/components/Button';
@@ -14,6 +14,11 @@ interface AdminTimeEntryHistoryPageProps {
 export function AdminTimeEntryHistoryPage({ requestedById }: AdminTimeEntryHistoryPageProps) {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const monthKey = searchParams.get('month');
+  const initialMonthKey =
+    monthKey && /^\d{4}-(0[1-9]|1[0-2])$/.test(monthKey) ? monthKey : undefined;
+  const fromTimePeriods = searchParams.get('from') === 'time-periods';
 
   if (!userId) return <Navigate replace to="/users" />;
 
@@ -21,20 +26,28 @@ export function AdminTimeEntryHistoryPage({ requestedById }: AdminTimeEntryHisto
     <AdminTimeEntryHistoryContent
       userId={userId}
       requestedById={requestedById}
+      initialMonthKey={initialMonthKey}
+      backLabel={fromTimePeriods ? 'Voltar para fechamentos' : undefined}
       onBack={() => {
-        void navigate('/users');
+        void navigate(
+          fromTimePeriods && initialMonthKey ? `/time-periods?month=${initialMonthKey}` : '/users',
+        );
       }}
     />
   );
 }
 
 interface AdminTimeEntryHistoryContentProps {
+  backLabel?: string | undefined;
+  initialMonthKey?: string | undefined;
   onBack: () => void;
   requestedById: string;
   userId: string;
 }
 
 function AdminTimeEntryHistoryContent({
+  backLabel,
+  initialMonthKey,
   onBack,
   requestedById,
   userId,
@@ -67,8 +80,13 @@ function AdminTimeEntryHistoryContent({
 
       {!userProfile.isLoading && !userProfile.hasError && userProfile.profile && (
         <>
-          <UserHistoryContext onBack={onBack} profile={userProfile.profile} />
-          <TimeEntryHistory canApplyDirectly requestedById={requestedById} userId={userId} />
+          <UserHistoryContext backLabel={backLabel} onBack={onBack} profile={userProfile.profile} />
+          <TimeEntryHistory
+            canApplyDirectly
+            initialMonthKey={initialMonthKey}
+            requestedById={requestedById}
+            userId={userId}
+          />
         </>
       )}
     </PageContent>

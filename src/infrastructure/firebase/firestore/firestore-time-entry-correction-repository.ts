@@ -12,7 +12,7 @@ import {
   where,
   writeBatch,
   type WriteBatch,
-} from 'firebase/firestore';
+} from 'firebase/firestore/lite';
 import {
   TimeEntryCorrectionRepositoryError,
   type NewTimeEntryCorrection,
@@ -151,6 +151,25 @@ export class FirestoreTimeEntryCorrectionRepository implements TimeEntryCorrecti
       return item ? toCorrection(item.id, item.data() as TimeEntryCorrectionDocument) : null;
     } catch (error: unknown) {
       throw new TimeEntryCorrectionRepositoryError('Unable to read pending correction.', {
+        cause: error,
+      });
+    }
+  }
+
+  async findPendingByMonth(monthKey: string) {
+    try {
+      const snapshot = await getDocs(
+        query(
+          collection(this.firestore, 'timeEntryCorrections'),
+          where('monthKey', '==', monthKey),
+          where('status', '==', 'PENDING'),
+        ),
+      );
+      return snapshot.docs.map((item) =>
+        toCorrection(item.id, item.data() as TimeEntryCorrectionDocument),
+      );
+    } catch (error: unknown) {
+      throw new TimeEntryCorrectionRepositoryError('Unable to read pending corrections.', {
         cause: error,
       });
     }

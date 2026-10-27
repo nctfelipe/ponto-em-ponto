@@ -10,16 +10,18 @@ import { TimeEntryHistoryList } from '@/ui/time-entry-history/TimeEntryHistoryLi
 
 interface TimeEntryHistoryProps {
   canApplyDirectly: boolean;
+  initialMonthKey?: string | undefined;
   requestedById: string;
   userId: string;
 }
 
 export function TimeEntryHistory({
   canApplyDirectly,
+  initialMonthKey,
   requestedById,
   userId,
 }: TimeEntryHistoryProps) {
-  const history = useTimeEntryHistory(userId);
+  const history = useTimeEntryHistory(userId, initialMonthKey);
   const correction = useTimeEntryCorrection({ requestedById, userId });
   const [selectedDay, setSelectedDay] = useState<MonthlyTimeEntryDay | null>(null);
 
@@ -70,11 +72,16 @@ export function TimeEntryHistory({
 
       {correction.successMessage && <Alert variant="success">{correction.successMessage}</Alert>}
 
+      {!history.isLoading && !history.hasError && history.isPeriodClosed && (
+        <Alert>Este mês está fechado. As batidas e o histórico permanecem disponíveis.</Alert>
+      )}
+
       {!history.isLoading && !history.hasError && (
         <TimeEntryHistoryList
           corrections={history.corrections}
           canApplyDirectly={canApplyDirectly}
           days={history.days}
+          isPeriodClosed={history.isPeriodClosed}
           onOpenCorrections={openCorrections}
         />
       )}
@@ -86,6 +93,7 @@ export function TimeEntryHistory({
           day={selectedDay}
           errorMessage={correction.errorMessage}
           isSubmitting={correction.isSubmitting}
+          isReadOnly={history.isPeriodClosed}
           onClose={closeDialog}
           onDecision={decideCorrection}
           onSubmit={submitCorrection}

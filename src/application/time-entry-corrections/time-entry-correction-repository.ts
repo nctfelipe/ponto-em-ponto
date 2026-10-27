@@ -19,6 +19,7 @@ export interface TimeEntryCorrectionRepository {
   findById(id: string): Promise<TimeEntryCorrection | null>;
   findByUserAndMonth(userId: string, monthKey: string): Promise<TimeEntryCorrection[]>;
   findPendingByDay(userId: string, dayKey: string): Promise<TimeEntryCorrection | null>;
+  findPendingByMonth(monthKey: string): Promise<TimeEntryCorrection[]>;
 }
 
 export class TimeEntryCorrectionRepositoryError extends Error {
