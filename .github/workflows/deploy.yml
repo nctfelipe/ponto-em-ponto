@@ -63,8 +63,6 @@ jobs:
           firebase deploy \
             --only hosting \
             --project "$VITE_FIREBASE_PROJECT_ID" \
-            --non-interactive \
-            > /dev/null
-          echo "Firebase Hosting deployment completed."
+            --non-interactive
         env:
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
